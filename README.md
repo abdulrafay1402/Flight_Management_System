@@ -18,9 +18,9 @@ The **Flight and Ticket Management System** is a Java-based application designed
 - **Version Control:** GitHub
 
 ## Team Members
-- **Danish Ahmed** *(Repository Owner & Team Lead)*
-- **Abdul Rafay Tariq** *(Contributor)*
+- **Danish Ahmed** *(Team Lead)*
 - **Abdul Rafay** *(Contributor)*
+- **Abdul Rafay Tariq** *(Contributor)*
 
 ## Installation & Setup
 1. Clone the repository:
