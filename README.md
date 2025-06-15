@@ -25,7 +25,7 @@ The **Flight and Ticket Management System** is a Java-based application designed
 ## Installation & Setup
 1. Clone the repository:
    ```sh
-   git clone https://github.com/Danish-Ahmed24/Flight-Ticket_Management_sys.git
+   git clone https://github.com/abdulrafay1402/Flight_Management_System
    ```
 2. Open the project in an IDE (Eclipse, IntelliJ, or NetBeans).
 3. Ensure you have Java installed (JDK 11 or later recommended).
