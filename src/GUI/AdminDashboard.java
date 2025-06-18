@@ -4,6 +4,8 @@ import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
@@ -296,40 +298,120 @@ public class AdminDashboard {
         gbc.gridx = 0;
         gbc.gridy = 0;
         contentPanel.add(new JLabel("Plane Model:"), gbc);
+
         gbc.gridx = 1;
         JTextField modelField = new JTextField(15);
         contentPanel.add(modelField, gbc);
 
+        gbc.gridx = 1;
+        gbc.gridy = 1;
+        gbc.anchor = GridBagConstraints.WEST;
+        JLabel modelFeedback = new JLabel("");
+        modelFeedback.setFont(new Font("Arial", Font.PLAIN, 12));
+        contentPanel.add(modelFeedback, gbc);
+
+        gbc.gridy += 1;
+        gbc.anchor = GridBagConstraints.WEST;
+
         // Manufacturer
         gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc.gridy = 2;
         contentPanel.add(new JLabel("Manufacturer:"), gbc);
+
         gbc.gridx = 1;
+        gbc.gridy = 2;
         JTextField manufacturerField = new JTextField(15);
         contentPanel.add(manufacturerField, gbc);
 
+        gbc.gridy = 3;
+        gbc.anchor = GridBagConstraints.WEST;
+        JLabel manufacturerFeedback = new JLabel("");
+        manufacturerFeedback.setFont(new Font("Arial", Font.PLAIN, 12));
+        contentPanel.add(manufacturerFeedback, gbc);
+
+        gbc.gridy += 1;
+        gbc.anchor = GridBagConstraints.WEST;
+
         // Business Seats
         gbc.gridx = 0;
-        gbc.gridy = 2;
+        gbc.gridy = 4;
         contentPanel.add(new JLabel("Business Seats:"), gbc);
         gbc.gridx = 1;
         JTextField businessSeatsField = new JTextField(15);
         contentPanel.add(businessSeatsField, gbc);
 
+        gbc.gridy += 1;
+
         // Economy Seats
         gbc.gridx = 0;
-        gbc.gridy = 3;
+        gbc.gridy = 5;
         contentPanel.add(new JLabel("Economy Seats:"), gbc);
         gbc.gridx = 1;
         JTextField economySeatsField = new JTextField(15);
         contentPanel.add(economySeatsField, gbc);
 
-        // Add Button
-        gbc.gridx = 0;
-        gbc.gridy = 4;
-        gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.CENTER;
-        JButton addButton = createStyledButton("Add Plane", e -> {
+        // Validation Flags
+        boolean[] isValidModel = {false};
+        boolean[] isValidManufacturer = {false};
+
+        JButton addButton = createStyledButton("Add Plane", null); // Will set action later
+        addButton.setEnabled(false); // Initially disabled
+
+        // Add DocumentListeners
+        modelField.getDocument().addDocumentListener(new DocumentListener() {
+            private void update() {
+                String text = modelField.getText();
+                boolean matches = text.matches("[A-Z0-9]*"); // Only uppercase letters and digits
+
+                if (text.isEmpty()) {
+                    modelFeedback.setText("Please enter plane model.");
+                    modelFeedback.setForeground(Color.RED);
+                } else if (matches) {
+                    modelFeedback.setText("Valid format.");
+                    modelFeedback.setForeground(new Color(0, 150, 0)); // Green
+                    isValidModel[0] = true;
+                } else {
+                    modelFeedback.setText("Only uppercase letters and numbers allowed.");
+                    modelFeedback.setForeground(Color.RED);
+                    isValidModel[0] = false;
+                }
+
+                updateAddButtonState(addButton, isValidModel[0], isValidManufacturer[0]);
+            }
+
+            @Override public void insertUpdate(DocumentEvent e) { update(); }
+            @Override public void removeUpdate(DocumentEvent e) { update(); }
+            @Override public void changedUpdate(DocumentEvent e) {}
+        });
+
+        manufacturerField.getDocument().addDocumentListener(new DocumentListener() {
+            private void update() {
+                String text = manufacturerField.getText();
+                boolean matches = text.matches("[A-Z]*");
+
+                if (text.isEmpty()) {
+                    manufacturerFeedback.setText("Please enter manufacturer.");
+                    manufacturerFeedback.setForeground(Color.RED);
+                } else if (matches) {
+                    manufacturerFeedback.setText("Valid format.");
+                    manufacturerFeedback.setForeground(new Color(0, 150, 0));
+                    isValidManufacturer[0] = true;
+                } else {
+                    manufacturerFeedback.setText("Only uppercase letters allowed.");
+                    manufacturerFeedback.setForeground(Color.RED);
+                    isValidManufacturer[0] = false;
+                }
+
+                updateAddButtonState(addButton, isValidModel[0], isValidManufacturer[0]);
+            }
+
+            @Override public void insertUpdate(DocumentEvent e) { update(); }
+            @Override public void removeUpdate(DocumentEvent e) { update(); }
+            @Override public void changedUpdate(DocumentEvent e) {}
+        });
+
+        // Set final action listener after validation setup
+        addButton.addActionListener(e -> {
             String model = modelField.getText().trim();
             String manufacturer = manufacturerField.getText().trim();
             int businessSeats;
@@ -364,7 +446,6 @@ public class AdminDashboard {
                     businessSeatsField.setText("");
                     economySeatsField.setText("");
 
-                    // Refresh the plane list in the "Add Flight" card
                     refreshAddFlightPlaneList();
                 } else {
                     JOptionPane.showMessageDialog(frame, "Failed to add plane.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -373,6 +454,12 @@ public class AdminDashboard {
                 JOptionPane.showMessageDialog(frame, "Database error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
+
+        // Add Button
+        gbc.gridx = 0;
+        gbc.gridy = 6;
+        gbc.gridwidth = 2;
+        gbc.anchor = GridBagConstraints.CENTER;
         contentPanel.add(addButton, gbc);
 
         GridBagConstraints outerGbc = new GridBagConstraints();
@@ -386,6 +473,15 @@ public class AdminDashboard {
         return outerPanel;
     }
 
+    private void updateAddButtonState(JButton button, boolean... conditions) {
+        for (boolean cond : conditions) {
+            if (!cond) {
+                button.setEnabled(false);
+                return;
+            }
+        }
+        button.setEnabled(true);
+    }
     private void refreshAddFlightPlaneList() {
         try {
             JPanel rightPanel = (JPanel) frame.getContentPane().getComponent(1); // Get the right panel
