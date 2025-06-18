@@ -10,6 +10,10 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.sql.Connection;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Locale;
 
 public class SignUpPanel extends JPanel {
@@ -25,7 +29,7 @@ public class SignUpPanel extends JPanel {
     private JPanel centerPanel;
     private final Connection connection;
 
-    // --- New: Uppercase Document Filter ---
+    // --- Uppercase Document Filter ---
     private static class UppercaseDocumentFilter extends DocumentFilter {
         @Override
         public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
@@ -55,7 +59,6 @@ public class SignUpPanel extends JPanel {
 
     public void initializeComponents() {
         removeAll();
-
         mainPanel = new JPanel(new BorderLayout());
         add(mainPanel, BorderLayout.CENTER);
         createSwappedUI();
@@ -160,8 +163,6 @@ public class SignUpPanel extends JPanel {
         titleLabel.setFont(new Font("Poppins", Font.BOLD, 32));
         panel.add(titleLabel, gbc);
 
-        gbc.insets = new Insets(15, 100, 5, 100);
-
         // --- Name Field (Uppercase Forced) ---
         JTextField nameField = new JTextField();
         ((AbstractDocument) nameField.getDocument()).setDocumentFilter(new UppercaseDocumentFilter());
@@ -216,56 +217,135 @@ public class SignUpPanel extends JPanel {
         panel.setOpaque(false);
 
         GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
         gbc.gridwidth = GridBagConstraints.REMAINDER;
-        gbc.anchor = GridBagConstraints.CENTER;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(10, 100, 10, 100);
 
+        // --- Title ---
         JLabel titleLabel = new JLabel("Client Sign Up");
         titleLabel.setFont(new Font("Poppins", Font.BOLD, 32));
+        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(10, 100, 25, 100); // More space below title
         panel.add(titleLabel, gbc);
 
-        gbc.insets = new Insets(15, 100, 5, 100);
+        // --- Form Fields ---
+        gbc.gridy = 1;
+        gbc.anchor = GridBagConstraints.WEST; // Align all labels and content to the left
 
-        // --- Name Field (Uppercase Forced) ---
+        // --- Name Field ---
+        JLabel nameLabel = new JLabel("Name");
+        nameLabel.setFont(new Font("Poppins", Font.PLAIN, 16));
+        gbc.insets = new Insets(10, 100, 0, 100);
+        panel.add(nameLabel, gbc);
+        gbc.gridy++;
+
         JTextField nameField = new JTextField();
         ((AbstractDocument) nameField.getDocument()).setDocumentFilter(new UppercaseDocumentFilter());
-        addFormField(panel, gbc, "Name", nameField);
+        nameField.setPreferredSize(new Dimension(400, 30));
+        nameField.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.BLACK));
+        gbc.insets = new Insets(0, 100, 15, 100);
+        panel.add(nameField, gbc);
+        gbc.gridy++;
 
-        JTextField ageField = new JTextField();
-        addFormField(panel, gbc, "Age", ageField);
+        // --- Date of Birth Field ---
+        JLabel dobLabel = new JLabel("Date of Birth");
+        dobLabel.setFont(new Font("Poppins", Font.PLAIN, 16));
+        gbc.insets = new Insets(15, 100, 0, 100);
+        panel.add(dobLabel, gbc);
+        gbc.gridy++;
 
-        JLabel genderLabel = new JLabel("Gender:");
+        JPanel dobContentPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+        dobContentPanel.setBackground(Color.WHITE);
+        dobContentPanel.setOpaque(false);
+
+        JComboBox<String> dayComboBox = createStyledComboBox(getDays());
+        JComboBox<String> monthComboBox = createStyledComboBox(getMonths());
+        JComboBox<String> yearComboBox = createStyledComboBox(getYears());
+
+        // Adjust sizes to look good together
+        dayComboBox.setPreferredSize(new Dimension(80, 30));
+        monthComboBox.setPreferredSize(new Dimension(120, 30));
+        yearComboBox.setPreferredSize(new Dimension(90, 30));
+
+        dobContentPanel.add(dayComboBox);
+        dobContentPanel.add(monthComboBox);
+        dobContentPanel.add(yearComboBox);
+
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(20, 100, 15, 100);
+        panel.add(dobContentPanel, gbc);
+        gbc.gridy++;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        // --- Gender Field ---
+        JLabel genderLabel = new JLabel("Gender");
         genderLabel.setFont(new Font("Poppins", Font.PLAIN, 16));
+        gbc.insets = new Insets(15, 100, 0, 100);
         panel.add(genderLabel, gbc);
+        gbc.gridy++;
+
+        JPanel genderContentPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+        genderContentPanel.setBackground(Color.WHITE);
+        genderContentPanel.setOpaque(false);
 
         JRadioButton maleButton = new JRadioButton("Male");
         maleButton.setFont(new Font("Poppins", Font.PLAIN, 14));
         maleButton.setBackground(Color.WHITE);
+        maleButton.setOpaque(false);
+        maleButton.setFocusPainted(false);
 
         JRadioButton femaleButton = new JRadioButton("Female");
         femaleButton.setFont(new Font("Poppins", Font.PLAIN, 14));
         femaleButton.setBackground(Color.WHITE);
+        femaleButton.setOpaque(false);
+        femaleButton.setFocusPainted(false);
 
         ButtonGroup genderGroup = new ButtonGroup();
         genderGroup.add(maleButton);
         genderGroup.add(femaleButton);
 
-        JPanel genderPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
-        genderPanel.setBackground(Color.WHITE);
-        genderPanel.add(maleButton);
-        genderPanel.add(femaleButton);
-        panel.add(genderPanel, gbc);
+        genderContentPanel.add(maleButton);
+        genderContentPanel.add(femaleButton);
+
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.insets = new Insets(20, 100, 15, 100);
+        panel.add(genderContentPanel, gbc);
+        gbc.gridy++;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        // --- Password Field ---
+        JLabel passwordLabel = new JLabel("Password");
+        passwordLabel.setFont(new Font("Poppins", Font.PLAIN, 16));
+        gbc.insets = new Insets(10, 100, 0, 100);
+        panel.add(passwordLabel, gbc);
+        gbc.gridy++;
 
         JPasswordField passwordField = new JPasswordField();
-        addFormField(panel, gbc, "Password", passwordField);
+        passwordField.setPreferredSize(new Dimension(400, 30));
+        passwordField.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.BLACK));
+        gbc.insets = new Insets(0, 100, 25, 100);
+        panel.add(passwordField, gbc);
+        gbc.gridy++;
 
-        gbc.insets = new Insets(30, 100, 10, 100);
+        // --- Buttons ---
+        gbc.anchor = GridBagConstraints.CENTER;
+        gbc.fill = GridBagConstraints.NONE; // Buttons should not stretch
 
+        // --- Sign Up Button ---
+        gbc.insets = new Insets(10, 100, 10, 100);
         JButton signUpButton = createStyledButton("Sign Up", e -> {
+            // Action listener logic remains the same
             String name = nameField.getText().trim();
             String password = new String(passwordField.getPassword()).trim();
-            String ageText = ageField.getText().trim();
+            String day = (String) dayComboBox.getSelectedItem();
+            String month = (String) monthComboBox.getSelectedItem();
+            String year = (String) yearComboBox.getSelectedItem();
             String gender = null;
 
             if (maleButton.isSelected()) {
@@ -274,21 +354,31 @@ public class SignUpPanel extends JPanel {
                 gender = "Female";
             }
 
-            if (name.isEmpty() || password.isEmpty() || ageText.isEmpty() || gender == null) {
+            if (name.isEmpty() || password.isEmpty() || day == null || month == null || year == null || gender == null) {
                 JOptionPane.showMessageDialog(frame, "All fields are required!", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
             try {
-                int age = Integer.parseInt(ageText);
+                String dobStr = String.format("%s-%02d-%02d", year, getMonthNumber(month), Integer.parseInt(day));
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                sdf.setLenient(false);
+                Date dateOfBirth = sdf.parse(dobStr);
+
+                int age = calculateAge(dateOfBirth);
+                if (age < 0 || age > 110) {
+                    JOptionPane.showMessageDialog(frame, "Age must be between 0 and 110 years.", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
                 String email = name.toLowerCase().replaceAll(" ", ".") + "@client.com";
-                User.signupClient(connection, name, password, email, age, gender);
+                User.signupClient(connection, name, password, email, dateOfBirth, gender);
                 JOptionPane.showMessageDialog(frame,
                         "Client Sign-Up Successful!\nYour email is: " + email,
                         "Success",
                         JOptionPane.INFORMATION_MESSAGE);
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(frame, "Age must be a valid number!", "Error", JOptionPane.ERROR_MESSAGE);
+            } catch (ParseException ex) {
+                JOptionPane.showMessageDialog(frame, "Invalid date. Please check the day, month, and year.", "Error", JOptionPane.ERROR_MESSAGE);
             } catch (UserAlreadyExistsException ex) {
                 JOptionPane.showMessageDialog(frame, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
@@ -296,9 +386,10 @@ public class SignUpPanel extends JPanel {
                 JOptionPane.showMessageDialog(frame, "An error occurred: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
-
         panel.add(signUpButton, gbc);
+        gbc.gridy++;
 
+        // --- Back to Role Selection Link ---
         JPanel backPanel = createBackPanel("Back to Role Selection", () -> cardLayout.show(centerPanel, "ROLE"));
         gbc.insets = new Insets(10, 100, 10, 100);
         panel.add(backPanel, gbc);
@@ -306,7 +397,68 @@ public class SignUpPanel extends JPanel {
         return panel;
     }
 
+    // ===================================================================================
+    //  HELPER METHODS
+    // ===================================================================================
+
+    private JComboBox<String> createStyledComboBox(String[] items) {
+        JComboBox<String> comboBox = new JComboBox<>(items);
+        comboBox.setFont(new Font("Poppins", Font.PLAIN, 14));
+        comboBox.setBackground(Color.WHITE);
+        // We don't set a custom border here to keep the native look of the combo box arrow
+        return comboBox;
+    }
+
+    private String[] getDays() {
+        String[] days = new String[31];
+        for (int i = 0; i < 31; i++) {
+            days[i] = String.valueOf(i + 1);
+        }
+        return days;
+    }
+
+    private String[] getMonths() {
+        return new String[]{
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+        };
+    }
+
+    private String[] getYears() {
+        // Go from 1920 up to the current year
+        int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+        String[] years = new String[currentYear - 1920 + 1];
+        for (int i = 0; i < years.length; i++) {
+            years[i] = String.valueOf(1920 + i);
+        }
+        return years;
+    }
+
+    private int getMonthNumber(String monthName) {
+        String[] months = getMonths();
+        for (int i = 0; i < months.length; i++) {
+            if (months[i].equals(monthName)) {
+                return i + 1; // Return 1-12
+            }
+        }
+        return 1; // Default to January
+    }
+
+    private int calculateAge(Date dateOfBirth) {
+        if (dateOfBirth == null) return 0;
+        Calendar dob = Calendar.getInstance();
+        dob.setTime(dateOfBirth);
+        Calendar today = Calendar.getInstance();
+        int age = today.get(Calendar.YEAR) - dob.get(Calendar.YEAR);
+        if (today.get(Calendar.DAY_OF_YEAR) < dob.get(Calendar.DAY_OF_YEAR)) {
+            age--;
+        }
+        return age;
+    }
+
     private void addFormField(JPanel panel, GridBagConstraints gbc, String labelText, JComponent field) {
+        // This is primarily for the Admin panel now
+        gbc.insets = new Insets(15, 100, 5, 100);
         JLabel label = new JLabel(labelText);
         label.setFont(new Font("Poppins", Font.PLAIN, 16));
         panel.add(label, gbc);
