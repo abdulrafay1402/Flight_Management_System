@@ -2,10 +2,16 @@ package GUI;
 import Exceptions.UserAlreadyExistsException;
 import Model_and_Interfaces.User;
 import javax.swing.*;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.sql.Connection;
+import java.util.Locale;
+
 public class SignUpPanel extends JPanel {
     private final LoginTry loginTry;
     private final JFrame frame;
@@ -18,6 +24,23 @@ public class SignUpPanel extends JPanel {
     private int panelWidth;
     private JPanel centerPanel;
     private final Connection connection;
+
+    // --- New: Uppercase Document Filter ---
+    private static class UppercaseDocumentFilter extends DocumentFilter {
+        @Override
+        public void insertString(FilterBypass fb, int offset, String string, AttributeSet attr) throws BadLocationException {
+            if (string != null) {
+                super.insertString(fb, offset, string.toUpperCase(Locale.ROOT), attr);
+            }
+        }
+
+        @Override
+        public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+            if (text != null) {
+                super.replace(fb, offset, length, text.toUpperCase(Locale.ROOT), attrs);
+            }
+        }
+    }
 
     public SignUpPanel(LoginTry loginTry, JFrame frame, ImageIcon logoIcon, ImageIcon planeIcon, Connection connection) {
         this.loginTry = loginTry;
@@ -57,6 +80,7 @@ public class SignUpPanel extends JPanel {
         leftPanel.add(Box.createRigidArea(new Dimension(0, 50)));
         leftPanel.add(planeLabel);
         leftPanel.add(Box.createVerticalGlue());
+
         rightPanel = new JPanel(new GridBagLayout());
         rightPanel.setBackground(Color.WHITE);
         rightPanel.setPreferredSize(new Dimension(panelWidth, frame.getHeight()));
@@ -64,7 +88,6 @@ public class SignUpPanel extends JPanel {
         centerPanel = new JPanel(cardLayout);
         centerPanel.setOpaque(false);
 
-        // Role selection panel
         JPanel roleSelectionPanel = createRoleSelectionPanel();
         JPanel adminSignUpPanel = createAdminSignUpPanel();
         JPanel clientSignUpPanel = createClientSignUpPanel();
@@ -75,7 +98,6 @@ public class SignUpPanel extends JPanel {
 
         rightPanel.add(centerPanel);
 
-        // Add panels to main panel in swapped order
         mainPanel.add(leftPanel, BorderLayout.WEST);
         mainPanel.add(rightPanel, BorderLayout.EAST);
     }
@@ -103,7 +125,6 @@ public class SignUpPanel extends JPanel {
         JButton clientButton = createStyledButton("Client", e -> cardLayout.show(centerPanel, "CLIENT"));
         panel.add(clientButton, gbc);
 
-        // Back to login link
         JPanel backPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
         backPanel.setBackground(Color.WHITE);
         backPanel.setOpaque(false);
@@ -134,25 +155,29 @@ public class SignUpPanel extends JPanel {
         gbc.anchor = GridBagConstraints.CENTER;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(10, 100, 10, 100);
+
         JLabel titleLabel = new JLabel("Admin Sign Up");
         titleLabel.setFont(new Font("Poppins", Font.BOLD, 32));
         panel.add(titleLabel, gbc);
 
         gbc.insets = new Insets(15, 100, 5, 100);
 
+        // --- Name Field (Uppercase Forced) ---
         JTextField nameField = new JTextField();
+        ((AbstractDocument) nameField.getDocument()).setDocumentFilter(new UppercaseDocumentFilter());
         addFormField(panel, gbc, "Name", nameField);
 
         JPasswordField passwordField = new JPasswordField();
         addFormField(panel, gbc, "Password", passwordField);
 
+        // --- Company Name Field (Uppercase Forced) ---
         JTextField companyField = new JTextField();
+        ((AbstractDocument) companyField.getDocument()).setDocumentFilter(new UppercaseDocumentFilter());
         addFormField(panel, gbc, "Company Name", companyField);
 
         gbc.insets = new Insets(30, 100, 10, 100);
 
         JButton signUpButton = createStyledButton("Sign Up", e -> {
-            // Admin Sign-Up Logic
             String name = nameField.getText().trim();
             String password = new String(passwordField.getPassword()).trim();
             String companyName = companyField.getText().trim();
@@ -178,7 +203,6 @@ public class SignUpPanel extends JPanel {
         });
         panel.add(signUpButton, gbc);
 
-        // Back to role selection
         JPanel backPanel = createBackPanel("Back to Role Selection", () -> cardLayout.show(centerPanel, "ROLE"));
         gbc.insets = new Insets(10, 100, 10, 100);
         panel.add(backPanel, gbc);
@@ -203,13 +227,14 @@ public class SignUpPanel extends JPanel {
 
         gbc.insets = new Insets(15, 100, 5, 100);
 
+        // --- Name Field (Uppercase Forced) ---
         JTextField nameField = new JTextField();
+        ((AbstractDocument) nameField.getDocument()).setDocumentFilter(new UppercaseDocumentFilter());
         addFormField(panel, gbc, "Name", nameField);
 
         JTextField ageField = new JTextField();
         addFormField(panel, gbc, "Age", ageField);
 
-        // Gender selection using radio buttons (Male, Female only)
         JLabel genderLabel = new JLabel("Gender:");
         genderLabel.setFont(new Font("Poppins", Font.PLAIN, 16));
         panel.add(genderLabel, gbc);
@@ -238,7 +263,6 @@ public class SignUpPanel extends JPanel {
         gbc.insets = new Insets(30, 100, 10, 100);
 
         JButton signUpButton = createStyledButton("Sign Up", e -> {
-            // Client Sign-Up Logic
             String name = nameField.getText().trim();
             String password = new String(passwordField.getPassword()).trim();
             String ageText = ageField.getText().trim();
@@ -257,7 +281,7 @@ public class SignUpPanel extends JPanel {
 
             try {
                 int age = Integer.parseInt(ageText);
-                String email = name.toLowerCase().replaceAll(" ", ".") + "@client.com"; // Generate email
+                String email = name.toLowerCase().replaceAll(" ", ".") + "@client.com";
                 User.signupClient(connection, name, password, email, age, gender);
                 JOptionPane.showMessageDialog(frame,
                         "Client Sign-Up Successful!\nYour email is: " + email,
@@ -275,7 +299,6 @@ public class SignUpPanel extends JPanel {
 
         panel.add(signUpButton, gbc);
 
-        // Back to role selection
         JPanel backPanel = createBackPanel("Back to Role Selection", () -> cardLayout.show(centerPanel, "ROLE"));
         gbc.insets = new Insets(10, 100, 10, 100);
         panel.add(backPanel, gbc);
@@ -362,7 +385,6 @@ public class SignUpPanel extends JPanel {
     }
 
     private void animateBackToLogin() {
-        // Create animation container
         final int width = frame.getWidth();
         final int height = frame.getHeight();
 
@@ -370,7 +392,6 @@ public class SignUpPanel extends JPanel {
         animContainer.setSize(width, height);
         animContainer.setBackground(Color.WHITE);
 
-        // Create left panel copy (with plane icon)
         JPanel leftCopy = new JPanel();
         leftCopy.setBounds(panelWidth, 0, panelWidth, height);
         leftCopy.setBackground(new Color(220, 240, 255));
@@ -382,7 +403,6 @@ public class SignUpPanel extends JPanel {
         leftCopy.add(planeLabelCopy);
         leftCopy.add(Box.createVerticalGlue());
 
-        // Create right panel copy (empty white panel)
         JPanel rightCopy = new JPanel();
         rightCopy.setBounds(0, 0, panelWidth, height);
         rightCopy.setBackground(Color.WHITE);
@@ -395,7 +415,6 @@ public class SignUpPanel extends JPanel {
         frame.revalidate();
         frame.repaint();
 
-        // Animate the transition
         Timer timer = new Timer(16, null);
         final int[] step = {0};
         final int totalSteps = 30;
@@ -405,13 +424,12 @@ public class SignUpPanel extends JPanel {
             float progress = (float) step[0] / totalSteps;
             float smoothProgress = (float) (1 - Math.cos(progress * Math.PI)) / 2;
 
-            // Animate left panel moving right
             int newLeftX = (int) (panelWidth * smoothProgress);
             leftCopy.setBounds(newLeftX, 0, panelWidth, height);
 
             if (step[0] >= totalSteps) {
                 timer.stop();
-                loginTry.showLoginPanel(); // Call back to LoginTry to show login panel
+                loginTry.showLoginPanel();
             }
             frame.repaint();
         });
