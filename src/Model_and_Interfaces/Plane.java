@@ -13,6 +13,4 @@ public class Plane{
         this.plane_model = plane_model;
         this.manufacturer = manufacturer;
     }
-
-
 }
