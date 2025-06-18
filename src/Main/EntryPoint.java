@@ -7,6 +7,7 @@ import Exceptions.UserNotFoundException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.util.Scanner;
 
 public class EntryPoint implements ConnectionDB {
@@ -60,7 +61,7 @@ public class EntryPoint implements ConnectionDB {
         }
     }
 
-    private void handleSignup() throws SQLException, UserNotFoundException {
+    private void handleSignup() throws SQLException { // Remove UserNotFoundException from throws clause
         System.out.print("Enter usertype (admin/client): ");
         String usertype = scanner.nextLine();
 
@@ -76,12 +77,11 @@ public class EntryPoint implements ConnectionDB {
 
         try {
             User.signup(connection, usertype, name, signupPassword, signupEmail);
-        } catch (UserAlreadyExistsException e) {
-            throw new RuntimeException(e);
+            System.out.println("Signup successful!");
+        } catch (UserAlreadyExistsException | ParseException e) {
+            System.out.println("Error: " + e.getMessage()); // Inform the user about the specific error
         }
-        System.out.println("Signup successful!");
     }
-
     private void handleSignin() throws SQLException, UserNotFoundException {
         System.out.print("Enter email: ");
         String signinEmail = scanner.nextLine();
@@ -89,13 +89,15 @@ public class EntryPoint implements ConnectionDB {
         System.out.print("Enter password: ");
         String signinPassword = scanner.nextLine();
 
-        User user = null;
         try {
-            User.signin(connection, signinEmail, signinPassword);
+            User user = User.getSignedUser(connection, signinEmail, signinPassword);
+            System.out.println("Welcome, " + user.getName() + "! You are logged in as " + user.getRole());
+        } catch (UserNotFoundException e) {
+            System.err.println("Error: " + e.getMessage());
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            System.err.println("An unexpected error occurred: ");
+            e.printStackTrace();
         }
-        System.out.println("Welcome, " + user.getName() + "! You are logged in as " + user.getRole());
     }
 
     private void cleanup() {

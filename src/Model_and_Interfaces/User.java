@@ -1,4 +1,5 @@
 package Model_and_Interfaces;
+
 import Exceptions.UserNotFoundException;
 import Exceptions.UserAlreadyExistsException;
 
@@ -6,6 +7,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Scanner;
 
 public abstract class User<T extends User> {
@@ -139,14 +143,13 @@ public abstract class User<T extends User> {
             stmt.setString(2, password);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                // Create a Scanner for potential input
                 Scanner scanner = new Scanner(System.in);
 
                 return new Client(
                         rs.getInt("id"),
                         rs.getString("name"),
                         rs.getString("password"),
-                        rs.getInt("age"),
+                        rs.getDate("date_of_birth"),
                         rs.getString("gender"),
                         rs.getFloat("balance"),
                         scanner,
@@ -170,13 +173,11 @@ public abstract class User<T extends User> {
         if (admin != null) {
             return admin;
         }
-
         // If not admin, try to get a client
         Client client = getClient(connection, email, password);
         if (client != null) {
             return client;
         }
-
         // No valid user found
         throw new UserNotFoundException("Invalid Credentials");
     }
@@ -184,18 +185,16 @@ public abstract class User<T extends User> {
     /**
      * Sign in user and display appropriate menu
      */
-    public static void signin(Connection connection, String email, String password) throws Exception {
+    public static User signin(Connection connection, String email, String password) throws Exception {
         User user = User.getSignedUser(connection, email, password);
-
         if (user instanceof Admin) {
             Admin adminUser = (Admin) user;
-            adminUser.menu(adminUser); // Call the menu method
-            // Handle admin-specific functionality
+            adminUser.menu(adminUser);
         } else if (user instanceof Client) {
             Client clientUser = (Client) user;
-            clientUser.menu(clientUser); // Call the menu method
-            // Handle client-specific functionality
+            clientUser.menu(clientUser);
         }
+        return user;
     }
 
     /**
@@ -211,36 +210,28 @@ public abstract class User<T extends User> {
      * @throws SQLException If database operation fails
      */
     public static void signup(Connection connection, String userType, String name, String password, String email)
-            throws UserAlreadyExistsException, SQLException {
-        // Check if email is already taken
+            throws UserAlreadyExistsException, SQLException, ParseException {
         if (isEmailTaken(connection, email)) {
             throw new UserAlreadyExistsException("Email already in use: " + email);
         }
 
         if ("admin".equalsIgnoreCase(userType)) {
-            // For admin, prompt for company name
-
             Scanner scanner = new Scanner(System.in);
             System.out.print("Enter company name: ");
             String companyName = scanner.nextLine();
-
             signupAdmin(connection, name, password, email, companyName);
         } else if ("client".equalsIgnoreCase(userType)) {
-            // For client, prompt for required information
             Scanner scanner = new Scanner(System.in);
 
-//            System.out.print("Enter admin ID: ");
-//            int adminId = scanner.nextInt();
-//            scanner.nextLine(); // consume newline
-
-            System.out.print("Enter age: ");
-            int age = scanner.nextInt();
-            scanner.nextLine(); // consume newline
+            System.out.print("Enter date of birth (YYYY-MM-DD): ");
+            String dobStr = scanner.nextLine();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            Date dateOfBirth = sdf.parse(dobStr);
 
             System.out.print("Enter gender (Male/Female/Other): ");
             String gender = scanner.nextLine();
 
-            signupClient(connection, name, password, email, age, gender);
+            signupClient(connection, name, password, email, dateOfBirth, gender);
         } else {
             throw new IllegalArgumentException("Invalid user type: " + userType);
         }
@@ -293,35 +284,32 @@ public abstract class User<T extends User> {
      * @param name Client's name
      * @param password Client's password
      * @param email Client's email
-     * @param age Client's age
+     * @param dateOfBirth Client's date of birth (as Date)
      * @param gender Client's gender (Male/Female/Other)
      * @throws UserAlreadyExistsException If email is already in use
      * @throws SQLException If database operation fails
      */
-    public static void signupClient(Connection connection, String name, String password, String email, int age, String gender)
+    public static void signupClient(Connection connection, String name, String password, String email, Date dateOfBirth, String gender)
             throws UserAlreadyExistsException, SQLException {
         // Check if email is already taken
         if (isEmailTaken(connection, email)) {
             throw new UserAlreadyExistsException("Email already in use: " + email);
         }
 
-        // Default balance starts at 0
-        double balance = 10000.0;
-
         // Validate gender input
         if (!gender.equals("Male") && !gender.equals("Female") && !gender.equals("Other")) {
             throw new IllegalArgumentException("Gender must be 'Male', 'Female', or 'Other'");
         }
 
-        String sql = "INSERT INTO client (name, password, email, age, gender, balance) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO client (name, password, email, date_of_birth, gender, balance) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, name);
             stmt.setString(2, password);
             stmt.setString(3, email);
-            stmt.setInt(4, age);
+            stmt.setDate(4, new java.sql.Date(dateOfBirth.getTime()));
             stmt.setString(5, gender);
-            stmt.setDouble(6, balance);
+            stmt.setDouble(6, 10000.0); // Default balance
 
             int rowsAffected = stmt.executeUpdate();
             if (rowsAffected <= 0) {

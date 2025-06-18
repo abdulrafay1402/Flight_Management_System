@@ -3,33 +3,41 @@ package Model_and_Interfaces;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.Date;
 
-public class Client extends User<Client> implements FlightOperations,BookingOperations{
-    private int age;
+public class Client extends User<Client> implements FlightOperations, BookingOperations {
+    private Date dateOfBirth;
     private String gender;
     private float balance;
     private Scanner scanner;
     private Connection connection;
 
-    public Client(int id, String name, String password, int age, String gender, float balance,Scanner scanner,Connection connection) {
-        super(id, name, password, name+"@client.com","client");
-        this.connection=connection;
-        this.scanner=scanner;
-        this.age = age;
+    public Client(int id, String name, String password, Date dateOfBirth, String gender, float balance, Scanner scanner, Connection connection) {
+        super(id, name, password, name + "@client.com", "client");
+        this.connection = connection;
+        this.scanner = scanner;
+        this.dateOfBirth = dateOfBirth;
         this.gender = gender;
         this.balance = balance;
     }
 
-    public float getBalance() {
-        return balance;
+    public Date getDateOfBirth() {
+        return dateOfBirth;
     }
 
     public int getAge() {
-        return age;
+        // Calculate age from date of birth
+        if (dateOfBirth == null) return 0;
+        long ageInMillis = new Date().getTime() - dateOfBirth.getTime();
+        return (int) (ageInMillis / (1000L * 60 * 60 * 24 * 365));
     }
 
     public String getGender() {
         return gender;
+    }
+
+    public float getBalance() {
+        return balance;
     }
 
     @Override
@@ -37,33 +45,31 @@ public class Client extends User<Client> implements FlightOperations,BookingOper
         System.out.println("Welcome Client:-> " + client.name);
 
         while (true) {
-            System.out.println("1.  View Bookings");//
-            System.out.println("2.  View Flights");//
-            System.out.println("3.  Book Flight");//
-            System.out.println("4.  My profile");//
-            System.out.println("5.  Change password");//
+            System.out.println("1.  View Bookings");
+            System.out.println("2.  View Flights");
+            System.out.println("3.  Book Flight");
+            System.out.println("4.  My profile");
+            System.out.println("5.  Change password");
             System.out.println("6. Log out");
             System.out.print("Enter: ");
 
-
             int option = scanner.nextInt();
-            switch (option)
-            {
+            switch (option) {
                 case 1:
-                    viewBookings(connection,client);
+                    viewBookings(connection, client);
                     break;
                 case 2:
                     viewFlights(connection);
                     break;
                 case 3:
-                    scanner.nextLine(); // Consume newline
+                    scanner.nextLine();
                     System.out.print("Enter seat type (business/economy): ");
                     String seatType = scanner.nextLine();
                     System.out.print("Enter source: ");
                     String source = scanner.nextLine();
                     System.out.print("Enter destination: ");
                     String destination = scanner.nextLine();
-                    bookFlight(connection,scanner,seatType, source, destination,balance,id);
+                    bookFlight(connection, scanner, seatType, source, destination, balance, id);
                     break;
                 case 4:
                     showProfile();
@@ -87,31 +93,29 @@ public class Client extends User<Client> implements FlightOperations,BookingOper
             }
         }
     }
-//    name,gender,age,email)
 
     public void showProfile() {
         try {
-            String query = "SELECT * FROM client where id="+this.id;  // Your query to fetch clients
+            String query = "SELECT * FROM client WHERE id = " + this.id;
             Statement statement = connection.createStatement();
             ResultSet resultSet = statement.executeQuery(query);
 
-            // Process the ResultSet and display clients
             while (resultSet.next()) {
                 String name = resultSet.getString("name");
                 String email = resultSet.getString("email");
                 String gender = resultSet.getString("gender");
-                int age = resultSet.getInt("age");
-                System.out.println("Name: " + name + ", Email: " + email + ", Gender: " + gender+", Age: "+age);
+                Date dateOfBirth = resultSet.getDate("date_of_birth");
+                System.out.println("Name: " + name + ", Email: " + email + ", Gender: " + gender + ", DOB: " + dateOfBirth);
             }
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
+
     public void changePassword(String currentPassword, String newPassword, String confirmPassword) {
         ArrayList<Client> clients = getClients(connection);
 
         for (Client client : clients) {
-            // Assuming 'this' refers to the currently logged-in client
             if (client.getId() == this.id) {
                 if (!client.getPassword().equals(currentPassword)) {
                     System.out.println("Current password is incorrect.");
@@ -132,7 +136,7 @@ public class Client extends User<Client> implements FlightOperations,BookingOper
 
                     if (rowsUpdated > 0) {
                         System.out.println("Password updated successfully.");
-                        this.password = newPassword; // update in object as well
+                        this.password = newPassword;
                     } else {
                         System.out.println("Failed to update password.");
                     }
@@ -146,6 +150,7 @@ public class Client extends User<Client> implements FlightOperations,BookingOper
 
         System.out.println("Client not found.");
     }
+
     static ArrayList<Client> getClients(Connection connection) {
         ArrayList<Client> clients = new ArrayList<>();
         try {
@@ -156,13 +161,13 @@ public class Client extends User<Client> implements FlightOperations,BookingOper
             while (resultSet.next()) {
                 int id = resultSet.getInt("id");
                 String name = resultSet.getString("name");
-                int age = resultSet.getInt("age");
+                Date dateOfBirth = resultSet.getDate("date_of_birth");
                 String gender = resultSet.getString("gender");
                 String password = resultSet.getString("password");
                 String email = resultSet.getString("email");
                 float balance = resultSet.getFloat("balance");
 
-                clients.add(new Client(id,name,password,age,gender,balance,sc,connection));
+                clients.add(new Client(id, name, password, dateOfBirth, gender, balance, sc, connection));
             }
         } catch (SQLException e) {
             System.out.println(e.getMessage());
