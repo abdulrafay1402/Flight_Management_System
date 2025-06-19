@@ -9,7 +9,7 @@ The **Flight and Ticket Management System** is a Java-based application designed
 - **Passenger Management:** Store and retrieve passenger details.
 - **Admin Panel:** Manage flights, passengers, and ticket reservations.
 - **Search Functionality:** Search for available flights based on destination and time.
-- **Data Persistence:** File handling or database support for storing records.
+- **Data Persistence:** Database support for storing records.
 
 ## Technologies Used
 - **Programming Language:** Java
