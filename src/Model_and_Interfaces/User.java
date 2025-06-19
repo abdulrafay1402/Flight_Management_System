@@ -306,7 +306,7 @@ public abstract class User<T extends User> {
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, name);
             stmt.setString(2, password);
-            stmt.setString(3, email);
+            stmt.setString(3, email); // Store the email with dots
             stmt.setDate(4, new java.sql.Date(dateOfBirth.getTime()));
             stmt.setString(5, gender);
             stmt.setDouble(6, 10000.0); // Default balance

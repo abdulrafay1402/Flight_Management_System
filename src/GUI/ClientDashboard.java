@@ -779,6 +779,7 @@ public class ClientDashboard {
             return false;
         }
     }
+
     private boolean isFlightInFuture(int flightId) {
         String query = "SELECT reporting_time FROM flight WHERE id = ? AND reporting_time > NOW()";
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
@@ -899,7 +900,8 @@ public class ClientDashboard {
         gbc.gridy = 1;
         contentPanel.add(new JLabel("Email:"), gbc);
         gbc.gridx = 1;
-        JTextField emailField = new JTextField(clientEmail, 20);
+        String email = clientName.toLowerCase().replaceAll(" ", ".") + "@client.com";
+        JTextField emailField = new JTextField(email, 20);
         emailField.setEditable(false);
         emailField.setBackground(new Color(240, 240, 240));
         contentPanel.add(emailField, gbc);
