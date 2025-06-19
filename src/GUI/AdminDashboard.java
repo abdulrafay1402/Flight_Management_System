@@ -364,14 +364,14 @@ public class AdminDashboard {
                 boolean matches = text.matches("[A-Z0-9]*"); // Only uppercase letters and digits
 
                 if (text.isEmpty()) {
-                    modelFeedback.setText("Please enter plane model.");
+                    modelFeedback.setText(" Please enter plane model. ");
                     modelFeedback.setForeground(Color.RED);
                 } else if (matches) {
-                    modelFeedback.setText("Valid format.");
+                    modelFeedback.setText("✓ Valid. ");
                     modelFeedback.setForeground(new Color(0, 150, 0)); // Green
                     isValidModel[0] = true;
                 } else {
-                    modelFeedback.setText("Only uppercase letters and numbers allowed.");
+                    modelFeedback.setText("✘ Only uppercase letters and numbers allowed.");
                     modelFeedback.setForeground(Color.RED);
                     isValidModel[0] = false;
                 }
@@ -390,14 +390,14 @@ public class AdminDashboard {
                 boolean matches = text.matches("[A-Z]*");
 
                 if (text.isEmpty()) {
-                    manufacturerFeedback.setText("Please enter manufacturer.");
+                    manufacturerFeedback.setText(" Please enter manufacturer. ");
                     manufacturerFeedback.setForeground(Color.RED);
                 } else if (matches) {
-                    manufacturerFeedback.setText("Valid format.");
+                    manufacturerFeedback.setText("✓ Valid. ");
                     manufacturerFeedback.setForeground(new Color(0, 150, 0));
                     isValidManufacturer[0] = true;
                 } else {
-                    manufacturerFeedback.setText("Only uppercase letters allowed.");
+                    manufacturerFeedback.setText("✘ Only uppercase letters allowed.");
                     manufacturerFeedback.setForeground(Color.RED);
                     isValidManufacturer[0] = false;
                 }
@@ -537,21 +537,23 @@ public class AdminDashboard {
         loadAdminPlanes(planeComboBox, adminId);
         contentPanel.add(planeComboBox, gbc);
 
-        // Source
+        // Source Airport
         gbc.gridx = 0;
         gbc.gridy = 1;
-        contentPanel.add(new JLabel("Source:"), gbc);
+        contentPanel.add(new JLabel("Source Airport:"), gbc);
         gbc.gridx = 1;
-        JTextField sourceField = new JTextField(15);
-        contentPanel.add(sourceField, gbc);
+        JComboBox<String> sourceComboBox = new JComboBox<>();
+        loadAirports(sourceComboBox);
+        contentPanel.add(sourceComboBox, gbc);
 
-        // Destination
+        // Destination Airport
         gbc.gridx = 0;
         gbc.gridy = 2;
-        contentPanel.add(new JLabel("Destination:"), gbc);
+        contentPanel.add(new JLabel("Destination Airport:"), gbc);
         gbc.gridx = 1;
-        JTextField destField = new JTextField(15);
-        contentPanel.add(destField, gbc);
+        JComboBox<String> destComboBox = new JComboBox<>();
+        loadAirports(destComboBox);
+        contentPanel.add(destComboBox, gbc);
 
         // Flight Date
         gbc.gridx = 0;
@@ -647,11 +649,12 @@ public class AdminDashboard {
                 }
                 int planeId = Integer.parseInt(selectedPlane.split(" - ")[0]);
 
-                String source = sourceField.getText().trim();
-                String destination = destField.getText().trim();
-                if (source.isEmpty() || destination.isEmpty() || source.equalsIgnoreCase(destination)) {
+                String source = (String) sourceComboBox.getSelectedItem();
+                String destination = (String) destComboBox.getSelectedItem();
+
+                if (source == null || destination == null || source.equals(destination)) {
                     JOptionPane.showMessageDialog(frame,
-                            "Source and Destination should not be empty or the same.",
+                            "Source and Destination should not be the same.",
                             "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
@@ -698,8 +701,6 @@ public class AdminDashboard {
                 JOptionPane.showMessageDialog(frame, "Flight added successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
 
                 // Reset fields
-                sourceField.setText("");
-                destField.setText("");
                 expenseField.setText("");
                 yearComboBox.setSelectedItem(currentYear);
                 monthComboBox.setSelectedItem(currentMonth);
@@ -726,6 +727,22 @@ public class AdminDashboard {
         outerPanel.add(contentPanel, outerGbc);
 
         return outerPanel;
+    }
+
+    // New method to load airports into a combobox
+    private void loadAirports(JComboBox<String> comboBox) {
+        comboBox.removeAllItems();
+        String sql = "SELECT CONCAT(airport_code, ' - ', airport_name, ' (', city, ', ', country, ')') AS display_text " +
+                "FROM airports ORDER BY city, airport_name";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                comboBox.addItem(rs.getString("display_text"));
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(frame, "Error loading airports: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /**
