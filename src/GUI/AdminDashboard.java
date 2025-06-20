@@ -1194,7 +1194,23 @@ public class AdminDashboard {
                         newValueValid = isDateValid(yearComboBox, monthComboBox, dayComboBox) &&
                                 isTimeValid(hourComboBox, minuteComboBox, secondComboBox);
 
-                        if (!newValueValid) {
+                        if (newValueValid) {
+                            try {
+                                Timestamp selectedTime = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox,
+                                        hourComboBox, minuteComboBox, secondComboBox);
+                                Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+
+                                if (selectedTime.before(currentTime)) {
+                                    newValueValid = false;
+                                    feedbackMessage = "✘ Departure time cannot be in the past";
+                                    feedbackColor = Color.RED;
+                                }
+                            } catch (Exception e) {
+                                newValueValid = false;
+                                feedbackMessage = "✘ Invalid date/time selection";
+                                feedbackColor = Color.RED;
+                            }
+                        } else {
                             feedbackMessage = "✘ Please select valid date/time";
                             feedbackColor = Color.RED;
                         }
@@ -1376,6 +1392,12 @@ public class AdminDashboard {
                         newValue = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox,
                                 hourComboBox, minuteComboBox, secondComboBox);
 
+                        // Final validation check for departure time
+                        Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+                        if (((Timestamp)newValue).before(currentTime)) {
+                            throw new IllegalArgumentException("Departure time cannot be in the past");
+                        }
+
                         // Get current arrival time
                         Timestamp currentArrival = getCurrentArrivalTime(flightId);
                         if (currentArrival != null && ((Timestamp)newValue).after(currentArrival)) {
@@ -1434,7 +1456,6 @@ public class AdminDashboard {
 
         return outerPanel;
     }
-
     // Helper methods for time validation
     private Timestamp getCurrentDepartureTime(int flightId) {
         try {
