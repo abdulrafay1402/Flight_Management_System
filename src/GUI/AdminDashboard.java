@@ -14,10 +14,12 @@ import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 
 import java.util.Calendar;
 import java.util.Vector;
+import java.util.stream.IntStream;
 
 public class AdminDashboard {
     private static final Color BACKGROUND_COLOR = new Color(220, 240, 255); // Light blue
@@ -43,7 +45,6 @@ public class AdminDashboard {
     private JButton updateFlightButton;
     private JButton addPlaneButton;
 
-
     public AdminDashboard(int adminId, String adminName, float adminProfit, String companyName) {
         this.adminId = adminId;
         this.adminName = adminName;
@@ -60,7 +61,6 @@ public class AdminDashboard {
 
         initializeDashboard();
     }
-
     private void initializeDashboard() {
         frame = new JFrame("Admin Dashboard");
         frame.setLayout(new BorderLayout());
@@ -73,7 +73,6 @@ public class AdminDashboard {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
     }
-
     private JPanel createLeftPanel() {
         JPanel leftPanel = new JPanel();
         leftPanel.setBackground(BACKGROUND_COLOR);
@@ -93,7 +92,6 @@ public class AdminDashboard {
         leftPanel.add(logoutButton, BorderLayout.SOUTH);
         return leftPanel;
     }
-
     private JPanel createCardLayoutPanel() {
         JPanel centerPanel = new JPanel(new CardLayout());
         centerPanel.setBackground(BACKGROUND_COLOR);
@@ -109,7 +107,6 @@ public class AdminDashboard {
 
         return centerPanel;
     }
-
     private JPanel createTopNavigationButtons() {
         JPanel topNavPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         topNavPanel.setBackground(BACKGROUND_COLOR);
@@ -119,7 +116,6 @@ public class AdminDashboard {
 
         return topNavPanel;
     }
-
     private JPanel createLeftNavigationButtons() {
         JPanel buttonPanel = new JPanel(new GridLayout(5, 1, 5, 10));
         buttonPanel.setBackground(BACKGROUND_COLOR);
@@ -149,7 +145,6 @@ public class AdminDashboard {
 
         return buttonPanel;
     }
-
     private static JButton createStyledButton(String text, java.awt.event.ActionListener action) {
         JButton button = new JButton(text) {
             private boolean hover = false;
@@ -199,7 +194,6 @@ public class AdminDashboard {
         button.addActionListener(action);
         return button;
     }
-
     private static JButton createStyledLogoutButton(String text, ActionListener action) {
         JButton button = new JButton(text) {
             private boolean hover = false;
@@ -243,13 +237,18 @@ public class AdminDashboard {
 
         return button;
     }
-
+    private JComboBox<String> createStyledComboBox(String[] items) {
+        JComboBox<String> comboBox = new JComboBox<>(items);
+        comboBox.setFont(new Font("Poppins", Font.PLAIN, 14));
+        comboBox.setBackground(Color.WHITE);
+        // We don't set a custom border here to keep the native look of the combo box arrow
+        return comboBox;
+    }
     private static JLabel createImageLabel(String imagePath) {
         ImageIcon img = new ImageIcon(imagePath);
         Image image = img.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
         return new JLabel(new ImageIcon(image), JLabel.CENTER);
     }
-
     private JPanel createRightPanel() {
         JPanel rightPanel = new JPanel(new BorderLayout());
 
@@ -334,15 +333,33 @@ public class AdminDashboard {
         JTextField businessSeatsField = new JTextField(15);
         contentPanel.add(businessSeatsField, gbc);
 
+        gbc.gridx = 1;
+        gbc.gridy = 5;
+        gbc.anchor = GridBagConstraints.WEST;
+        JLabel businessSeatsFeedback = new JLabel("");
+        businessSeatsFeedback.setFont(new Font("Arial", Font.PLAIN, 12));
+        contentPanel.add(businessSeatsFeedback, gbc);
+
         gbc.gridy += 1;
+        gbc.anchor = GridBagConstraints.WEST;
 
         // Economy Seats
         gbc.gridx = 0;
-        gbc.gridy = 5;
+        gbc.gridy = 6;
         contentPanel.add(new JLabel("Economy Seats:"), gbc);
         gbc.gridx = 1;
         JTextField economySeatsField = new JTextField(15);
         contentPanel.add(economySeatsField, gbc);
+
+        gbc.gridx = 1;
+        gbc.gridy = 7;
+        gbc.anchor = GridBagConstraints.WEST;
+        JLabel economySeatsFeedback = new JLabel("");
+        economySeatsFeedback.setFont(new Font("Arial", Font.PLAIN, 12));
+        contentPanel.add(economySeatsFeedback, gbc);
+
+        gbc.gridy += 1;
+        gbc.anchor = GridBagConstraints.WEST;
 
         // Validation Flags
         boolean[] isValidModel = {false};
@@ -350,21 +367,21 @@ public class AdminDashboard {
         boolean[] isValidBusinessSeats = {false};
         boolean[] isValidEconomySeats = {false};
 
-        addPlaneButton = createStyledButton("Add Plane", null); // Set action later
-        addPlaneButton.setEnabled(false); // Initially disabled
+        addPlaneButton = createStyledButton("Add Plane", null);
+        addPlaneButton.setEnabled(false);
 
         // Add DocumentListeners
         modelField.getDocument().addDocumentListener(new DocumentListener() {
             private void update() {
                 String text = modelField.getText();
-                boolean matches = text.matches("[A-Z0-9]+"); // At least one character
+                boolean matches = text.matches("[A-Z0-9]+");
                 if (text.isEmpty()) {
                     modelFeedback.setText(" Please enter plane model. ");
                     modelFeedback.setForeground(Color.RED);
                     isValidModel[0] = false;
                 } else if (matches) {
                     modelFeedback.setText("✓ Valid. ");
-                    modelFeedback.setForeground(new Color(0, 150, 0)); // Green
+                    modelFeedback.setForeground(new Color(0, 150, 0));
                     isValidModel[0] = true;
                 } else {
                     modelFeedback.setText("✘ Only uppercase letters and numbers allowed.");
@@ -402,28 +419,69 @@ public class AdminDashboard {
             @Override public void changedUpdate(DocumentEvent e) {}
         });
 
-        DocumentListener seatsValidator = new DocumentListener() {
+        businessSeatsField.getDocument().addDocumentListener(new DocumentListener() {
             private void update() {
-                try {
-                    int business = Integer.parseInt(businessSeatsField.getText().trim());
-                    isValidBusinessSeats[0] = business > 0;
-                } catch (NumberFormatException e) {
+                String text = businessSeatsField.getText();
+                if (text.isEmpty()) {
+                    businessSeatsFeedback.setText(" Please enter business seats count. ");
+                    businessSeatsFeedback.setForeground(Color.RED);
                     isValidBusinessSeats[0] = false;
-                }
-                try {
-                    int economy = Integer.parseInt(economySeatsField.getText().trim());
-                    isValidEconomySeats[0] = economy > 0;
-                } catch (NumberFormatException e) {
-                    isValidEconomySeats[0] = false;
+                } else {
+                    try {
+                        int seats = Integer.parseInt(text.trim());
+                        if (seats > 0) {
+                            businessSeatsFeedback.setText("✓ Valid. ");
+                            businessSeatsFeedback.setForeground(new Color(0, 150, 0));
+                            isValidBusinessSeats[0] = true;
+                        } else {
+                            businessSeatsFeedback.setText("✘ Must be greater than 0.");
+                            businessSeatsFeedback.setForeground(Color.RED);
+                            isValidBusinessSeats[0] = false;
+                        }
+                    } catch (NumberFormatException e) {
+                        businessSeatsFeedback.setText("✘ Please enter a valid number.");
+                        businessSeatsFeedback.setForeground(Color.RED);
+                        isValidBusinessSeats[0] = false;
+                    }
                 }
                 updateAddPlaneButtonState(addPlaneButton, isValidModel[0], isValidManufacturer[0], isValidBusinessSeats[0], isValidEconomySeats[0]);
             }
             @Override public void insertUpdate(DocumentEvent e) { update(); }
             @Override public void removeUpdate(DocumentEvent e) { update(); }
             @Override public void changedUpdate(DocumentEvent e) {}
-        };
-        businessSeatsField.getDocument().addDocumentListener(seatsValidator);
-        economySeatsField.getDocument().addDocumentListener(seatsValidator);
+        });
+
+        economySeatsField.getDocument().addDocumentListener(new DocumentListener() {
+            private void update() {
+                String text = economySeatsField.getText();
+                if (text.isEmpty()) {
+                    economySeatsFeedback.setText(" Please enter economy seats count. ");
+                    economySeatsFeedback.setForeground(Color.RED);
+                    isValidEconomySeats[0] = false;
+                } else {
+                    try {
+                        int seats = Integer.parseInt(text.trim());
+                        if (seats > 0) {
+                            economySeatsFeedback.setText("✓ Valid. ");
+                            economySeatsFeedback.setForeground(new Color(0, 150, 0));
+                            isValidEconomySeats[0] = true;
+                        } else {
+                            economySeatsFeedback.setText("✘ Must be greater than 0.");
+                            economySeatsFeedback.setForeground(Color.RED);
+                            isValidEconomySeats[0] = false;
+                        }
+                    } catch (NumberFormatException e) {
+                        economySeatsFeedback.setText("✘ Please enter a valid number.");
+                        economySeatsFeedback.setForeground(Color.RED);
+                        isValidEconomySeats[0] = false;
+                    }
+                }
+                updateAddPlaneButtonState(addPlaneButton, isValidModel[0], isValidManufacturer[0], isValidBusinessSeats[0], isValidEconomySeats[0]);
+            }
+            @Override public void insertUpdate(DocumentEvent e) { update(); }
+            @Override public void removeUpdate(DocumentEvent e) { update(); }
+            @Override public void changedUpdate(DocumentEvent e) {}
+        });
 
         // Set final action listener after validation setup
         addPlaneButton.addActionListener(e -> {
@@ -478,11 +536,10 @@ public class AdminDashboard {
 
         // Add Button
         gbc.gridx = 0;
-        gbc.gridy = 6;
+        gbc.gridy = 8;
         gbc.gridwidth = 2;
         gbc.anchor = GridBagConstraints.CENTER;
-        // FIX: Use HORIZONTAL fill to match the screenshot and ensure it stretches
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.fill = GridBagConstraints.NONE;
         contentPanel.add(addPlaneButton, gbc);
 
         GridBagConstraints outerGbc = new GridBagConstraints();
@@ -498,6 +555,10 @@ public class AdminDashboard {
         modelFeedback.setForeground(Color.RED);
         manufacturerFeedback.setText(" Please enter manufacturer. ");
         manufacturerFeedback.setForeground(Color.RED);
+        businessSeatsFeedback.setText(" Please enter business seats count. ");
+        businessSeatsFeedback.setForeground(Color.RED);
+        economySeatsFeedback.setText(" Please enter economy seats count. ");
+        economySeatsFeedback.setForeground(Color.RED);
 
         return outerPanel;
     }
@@ -525,9 +586,8 @@ public class AdminDashboard {
         // Validation flags for the button
         final boolean[] isValidPlaneSelection = {false};
         final boolean[] isValidSourceDest = {false};
-        final boolean[] isValidDate = {false};
-        final boolean[] isValidReportingTime = {false};
-        final boolean[] isValidArrivalTime = {false};
+        final boolean[] isValidReportingDateTime = {false};
+        final boolean[] isValidArrivalDateTime = {false};
         final boolean[] isValidExpense = {false};
 
         // Plane Selection
@@ -557,50 +617,38 @@ public class AdminDashboard {
         loadAirports(destComboBox);
         contentPanel.add(destComboBox, gbc);
 
-        // Flight Date (Modified to match update card style)
+        // Reporting Date and Time
         gbc.gridx = 0;
         gbc.gridy = 3;
-        contentPanel.add(new JLabel("Flight Date:"), gbc);
+        contentPanel.add(new JLabel("Reporting Date & Time:"), gbc);
         gbc.gridx = 1;
-        JPanel datePanel = new JPanel(new GridBagLayout());
-        datePanel.setOpaque(false);
-        GridBagConstraints dateGbc = new GridBagConstraints();
-        dateGbc.insets = new Insets(0, 2, 0, 2);
-        dateGbc.anchor = GridBagConstraints.WEST;
+        JPanel reportingPanel = new JPanel(new GridBagLayout());
+        reportingPanel.setOpaque(false);
+        GridBagConstraints repGbc = new GridBagConstraints();
+        repGbc.insets = new Insets(0, 2, 0, 2);
+        repGbc.anchor = GridBagConstraints.WEST;
 
         Calendar cal = Calendar.getInstance();
         int currentYear = cal.get(Calendar.YEAR);
         int currentMonth = cal.get(Calendar.MONTH) + 1;
         int currentDay = cal.get(Calendar.DAY_OF_MONTH);
 
-        JComboBox<Integer> dayComboBox = new JComboBox<>();
-        JComboBox<Integer> monthComboBox = new JComboBox<>();
-        JComboBox<Integer> yearComboBox = new JComboBox<>();
+        // Reporting Date Components
+        JComboBox<Integer> repDayComboBox = new JComboBox<>();
+        JComboBox<Integer> repMonthComboBox = new JComboBox<>();
+        JComboBox<Integer> repYearComboBox = new JComboBox<>();
 
         for (int i = currentYear; i <= currentYear + 5; i++) {
-            yearComboBox.addItem(i);
+            repYearComboBox.addItem(i);
         }
         for (int i = 1; i <= 12; i++) {
-            monthComboBox.addItem(i);
+            repMonthComboBox.addItem(i);
         }
-        monthComboBox.setSelectedItem(currentMonth);
-        updateDays(yearComboBox, monthComboBox, dayComboBox, currentDay);
-        dayComboBox.setSelectedItem(currentDay);
+        repMonthComboBox.setSelectedItem(currentMonth);
+        updateDays(repYearComboBox, repMonthComboBox, repDayComboBox, currentDay);
+        repDayComboBox.setSelectedItem(currentDay);
 
-        dateGbc.gridx = 0; dateGbc.gridy = 0; datePanel.add(new JLabel("D:"), dateGbc);
-        dateGbc.gridx = 1; datePanel.add(dayComboBox, dateGbc);
-        dateGbc.gridx = 2; datePanel.add(new JLabel("M:"), dateGbc);
-        dateGbc.gridx = 3; datePanel.add(monthComboBox, dateGbc);
-        dateGbc.gridx = 4; datePanel.add(new JLabel("Y:"), dateGbc);
-        dateGbc.gridx = 5; datePanel.add(yearComboBox, dateGbc);
-        contentPanel.add(datePanel, gbc);
-
-        // Reporting Time
-        gbc.gridx = 0;
-        gbc.gridy = 4;
-        contentPanel.add(new JLabel("Reporting Time:"), gbc);
-        gbc.gridx = 1;
-        JPanel reportingPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        // Reporting Time Components
         JComboBox<Integer> repHour = new JComboBox<>();
         JComboBox<Integer> repMinute = new JComboBox<>();
         JComboBox<Integer> repSecond = new JComboBox<>();
@@ -608,19 +656,50 @@ public class AdminDashboard {
         populateComboBox(repHour, 0, 23);
         populateComboBox(repMinute, 0, 59);
         populateComboBox(repSecond, 0, 59);
-        reportingPanel.add(repHour);
-        reportingPanel.add(new JLabel(":"));
-        reportingPanel.add(repMinute);
-        reportingPanel.add(new JLabel(":"));
-        reportingPanel.add(repSecond);
+
+        // Add components to reporting panel
+        repGbc.gridx = 0; repGbc.gridy = 0; reportingPanel.add(new JLabel("D:"), repGbc);
+        repGbc.gridx = 1; reportingPanel.add(repDayComboBox, repGbc);
+        repGbc.gridx = 2; reportingPanel.add(new JLabel("M:"), repGbc);
+        repGbc.gridx = 3; reportingPanel.add(repMonthComboBox, repGbc);
+        repGbc.gridx = 4; reportingPanel.add(new JLabel("Y:"), repGbc);
+        repGbc.gridx = 5; reportingPanel.add(repYearComboBox, repGbc);
+        repGbc.gridx = 6; reportingPanel.add(new JLabel(" Time:"), repGbc);
+        repGbc.gridx = 7; reportingPanel.add(repHour, repGbc);
+        repGbc.gridx = 8; reportingPanel.add(new JLabel(":"), repGbc);
+        repGbc.gridx = 9; reportingPanel.add(repMinute, repGbc);
+        repGbc.gridx = 10; reportingPanel.add(new JLabel(":"), repGbc);
+        repGbc.gridx = 11; reportingPanel.add(repSecond, repGbc);
+
         contentPanel.add(reportingPanel, gbc);
 
-        // Arrival Time
+        // Arrival Date and Time
         gbc.gridx = 0;
-        gbc.gridy = 5;
-        contentPanel.add(new JLabel("Arrival Time:"), gbc);
+        gbc.gridy = 4;
+        contentPanel.add(new JLabel("Arrival Date & Time:"), gbc);
         gbc.gridx = 1;
-        JPanel arrivalPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        JPanel arrivalPanel = new JPanel(new GridBagLayout());
+        arrivalPanel.setOpaque(false);
+        GridBagConstraints arrGbc = new GridBagConstraints();
+        arrGbc.insets = new Insets(0, 2, 0, 2);
+        arrGbc.anchor = GridBagConstraints.WEST;
+
+        // Arrival Date Components
+        JComboBox<Integer> arrDayComboBox = new JComboBox<>();
+        JComboBox<Integer> arrMonthComboBox = new JComboBox<>();
+        JComboBox<Integer> arrYearComboBox = new JComboBox<>();
+
+        for (int i = currentYear; i <= currentYear + 5; i++) {
+            arrYearComboBox.addItem(i);
+        }
+        for (int i = 1; i <= 12; i++) {
+            arrMonthComboBox.addItem(i);
+        }
+        arrMonthComboBox.setSelectedItem(currentMonth);
+        updateDays(arrYearComboBox, arrMonthComboBox, arrDayComboBox, currentDay);
+        arrDayComboBox.setSelectedItem(currentDay);
+
+        // Arrival Time Components
         JComboBox<Integer> arrHour = new JComboBox<>();
         JComboBox<Integer> arrMinute = new JComboBox<>();
         JComboBox<Integer> arrSecond = new JComboBox<>();
@@ -628,16 +707,26 @@ public class AdminDashboard {
         populateComboBox(arrHour, 0, 23);
         populateComboBox(arrMinute, 0, 59);
         populateComboBox(arrSecond, 0, 59);
-        arrivalPanel.add(arrHour);
-        arrivalPanel.add(new JLabel(":"));
-        arrivalPanel.add(arrMinute);
-        arrivalPanel.add(new JLabel(":"));
-        arrivalPanel.add(arrSecond);
+
+        // Add components to arrival panel
+        arrGbc.gridx = 0; arrGbc.gridy = 0; arrivalPanel.add(new JLabel("D:"), arrGbc);
+        arrGbc.gridx = 1; arrivalPanel.add(arrDayComboBox, arrGbc);
+        arrGbc.gridx = 2; arrivalPanel.add(new JLabel("M:"), arrGbc);
+        arrGbc.gridx = 3; arrivalPanel.add(arrMonthComboBox, arrGbc);
+        arrGbc.gridx = 4; arrivalPanel.add(new JLabel("Y:"), arrGbc);
+        arrGbc.gridx = 5; arrivalPanel.add(arrYearComboBox, arrGbc);
+        arrGbc.gridx = 6; arrivalPanel.add(new JLabel(" Time:"), arrGbc);
+        arrGbc.gridx = 7; arrivalPanel.add(arrHour, arrGbc);
+        arrGbc.gridx = 8; arrivalPanel.add(new JLabel(":"), arrGbc);
+        arrGbc.gridx = 9; arrivalPanel.add(arrMinute, arrGbc);
+        arrGbc.gridx = 10; arrivalPanel.add(new JLabel(":"), arrGbc);
+        arrGbc.gridx = 11; arrivalPanel.add(arrSecond, arrGbc);
+
         contentPanel.add(arrivalPanel, gbc);
 
         // Expense
         gbc.gridx = 0;
-        gbc.gridy = 6;
+        gbc.gridy = 5;
         contentPanel.add(new JLabel("Expense:"), gbc);
         gbc.gridx = 1;
         JTextField expenseField = new JTextField(15);
@@ -645,12 +734,12 @@ public class AdminDashboard {
 
         // Add Flight Button
         gbc.gridx = 0;
-        gbc.gridy = 7;
+        gbc.gridy = 6;
         gbc.gridwidth = 2;
         gbc.anchor = GridBagConstraints.CENTER;
-        gbc.fill = GridBagConstraints.HORIZONTAL; // Make the button stretch
+        gbc.fill = GridBagConstraints.NONE;
         addFlightButton = createStyledButton("Add Flight", null);
-        addFlightButton.setEnabled(false); // Initially disabled
+        addFlightButton.setEnabled(false);
         contentPanel.add(addFlightButton, gbc);
 
         // --- Add Listeners for Dynamic Validation ---
@@ -658,52 +747,73 @@ public class AdminDashboard {
         // Listener for plane selection
         planeComboBox.addItemListener(e -> {
             isValidPlaneSelection[0] = e.getItem() != null && !((String) e.getItem()).startsWith("No planes");
-            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidDate[0], isValidReportingTime[0], isValidArrivalTime[0], isValidExpense[0]);
+            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidReportingDateTime[0], isValidArrivalDateTime[0], isValidExpense[0]);
         });
 
         // Listener for source/dest combo boxes
         ItemListener sourceDestListener = e -> {
             boolean valid = sourceComboBox.getSelectedItem() != null && destComboBox.getSelectedItem() != null && !sourceComboBox.getSelectedItem().equals(destComboBox.getSelectedItem());
             isValidSourceDest[0] = valid;
-            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidDate[0], isValidReportingTime[0], isValidArrivalTime[0], isValidExpense[0]);
+            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidReportingDateTime[0], isValidArrivalDateTime[0], isValidExpense[0]);
         };
         sourceComboBox.addItemListener(sourceDestListener);
         destComboBox.addItemListener(sourceDestListener);
 
-        // Listener for date components
-        ActionListener dateComponentListener = e -> {
-            Integer selectedDay = (Integer) dayComboBox.getSelectedItem();
+        // Listener for reporting date components
+        ActionListener reportingDateComponentListener = e -> {
+            Integer selectedDay = (Integer) repDayComboBox.getSelectedItem();
             if (selectedDay == null) selectedDay = currentDay;
-            updateDays(yearComboBox, monthComboBox, dayComboBox, selectedDay);
-            updateHourComboBoxes(yearComboBox, monthComboBox, dayComboBox, repHour, arrHour);
+            updateDays(repYearComboBox, repMonthComboBox, repDayComboBox, selectedDay);
 
-            isValidDate[0] = isDateValid(yearComboBox, monthComboBox, dayComboBox);
-            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidDate[0], isValidReportingTime[0], isValidArrivalTime[0], isValidExpense[0]);
+            isValidReportingDateTime[0] = isDateTimeValid(repYearComboBox, repMonthComboBox, repDayComboBox, repHour, repMinute, repSecond);
+            validateDateTimeOrder(repYearComboBox, repMonthComboBox, repDayComboBox, repHour, repMinute, repSecond,
+                    arrYearComboBox, arrMonthComboBox, arrDayComboBox, arrHour, arrMinute, arrSecond,
+                    isValidReportingDateTime, isValidArrivalDateTime);
+            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidReportingDateTime[0], isValidArrivalDateTime[0], isValidExpense[0]);
         };
-        yearComboBox.addActionListener(dateComponentListener);
-        monthComboBox.addActionListener(dateComponentListener);
-        dayComboBox.addActionListener(dateComponentListener);
+        repYearComboBox.addActionListener(reportingDateComponentListener);
+        repMonthComboBox.addActionListener(reportingDateComponentListener);
+        repDayComboBox.addActionListener(reportingDateComponentListener);
 
-        // Listener for time components
-        ActionListener timeComponentListener = e -> {
-            isValidReportingTime[0] = isTimeValid(repHour, repMinute, repSecond);
-            isValidArrivalTime[0] = isTimeValid(arrHour, arrMinute, arrSecond);
+        // Listener for arrival date components
+        ActionListener arrivalDateComponentListener = e -> {
+            Integer selectedDay = (Integer) arrDayComboBox.getSelectedItem();
+            if (selectedDay == null) selectedDay = currentDay;
+            updateDays(arrYearComboBox, arrMonthComboBox, arrDayComboBox, selectedDay);
 
-            if(isValidReportingTime[0] && isValidArrivalTime[0] && isValidDate[0]) {
-                Timestamp repTs = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox, repHour, repMinute, repSecond);
-                Timestamp arrTs = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox, arrHour, arrMinute, arrSecond);
-                if (arrTs != null && repTs != null && !arrTs.after(repTs)) {
-                    isValidArrivalTime[0] = false; // Invalid arrival time
-                }
-            }
-            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidDate[0], isValidReportingTime[0], isValidArrivalTime[0], isValidExpense[0]);
+            isValidArrivalDateTime[0] = isDateTimeValid(arrYearComboBox, arrMonthComboBox, arrDayComboBox, arrHour, arrMinute, arrSecond);
+            validateDateTimeOrder(repYearComboBox, repMonthComboBox, repDayComboBox, repHour, repMinute, repSecond,
+                    arrYearComboBox, arrMonthComboBox, arrDayComboBox, arrHour, arrMinute, arrSecond,
+                    isValidReportingDateTime, isValidArrivalDateTime);
+            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidReportingDateTime[0], isValidArrivalDateTime[0], isValidExpense[0]);
         };
-        repHour.addActionListener(timeComponentListener);
-        repMinute.addActionListener(timeComponentListener);
-        repSecond.addActionListener(timeComponentListener);
-        arrHour.addActionListener(timeComponentListener);
-        arrMinute.addActionListener(timeComponentListener);
-        arrSecond.addActionListener(timeComponentListener);
+        arrYearComboBox.addActionListener(arrivalDateComponentListener);
+        arrMonthComboBox.addActionListener(arrivalDateComponentListener);
+        arrDayComboBox.addActionListener(arrivalDateComponentListener);
+
+        // Listener for reporting time components
+        ActionListener reportingTimeComponentListener = e -> {
+            isValidReportingDateTime[0] = isDateTimeValid(repYearComboBox, repMonthComboBox, repDayComboBox, repHour, repMinute, repSecond);
+            validateDateTimeOrder(repYearComboBox, repMonthComboBox, repDayComboBox, repHour, repMinute, repSecond,
+                    arrYearComboBox, arrMonthComboBox, arrDayComboBox, arrHour, arrMinute, arrSecond,
+                    isValidReportingDateTime, isValidArrivalDateTime);
+            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidReportingDateTime[0], isValidArrivalDateTime[0], isValidExpense[0]);
+        };
+        repHour.addActionListener(reportingTimeComponentListener);
+        repMinute.addActionListener(reportingTimeComponentListener);
+        repSecond.addActionListener(reportingTimeComponentListener);
+
+        // Listener for arrival time components
+        ActionListener arrivalTimeComponentListener = e -> {
+            isValidArrivalDateTime[0] = isDateTimeValid(arrYearComboBox, arrMonthComboBox, arrDayComboBox, arrHour, arrMinute, arrSecond);
+            validateDateTimeOrder(repYearComboBox, repMonthComboBox, repDayComboBox, repHour, repMinute, repSecond,
+                    arrYearComboBox, arrMonthComboBox, arrDayComboBox, arrHour, arrMinute, arrSecond,
+                    isValidReportingDateTime, isValidArrivalDateTime);
+            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidReportingDateTime[0], isValidArrivalDateTime[0], isValidExpense[0]);
+        };
+        arrHour.addActionListener(arrivalTimeComponentListener);
+        arrMinute.addActionListener(arrivalTimeComponentListener);
+        arrSecond.addActionListener(arrivalTimeComponentListener);
 
         // DocumentListener for expense field
         expenseField.getDocument().addDocumentListener(new DocumentListener() {
@@ -714,7 +824,7 @@ public class AdminDashboard {
                 } catch (NumberFormatException ex) {
                     isValidExpense[0] = false;
                 }
-                updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidDate[0], isValidReportingTime[0], isValidArrivalTime[0], isValidExpense[0]);
+                updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidReportingDateTime[0], isValidArrivalDateTime[0], isValidExpense[0]);
             }
             @Override public void insertUpdate(DocumentEvent e) { update(); }
             @Override public void removeUpdate(DocumentEvent e) { update(); }
@@ -724,7 +834,7 @@ public class AdminDashboard {
         // Set action listener for the button AFTER validation logic is in place
         addFlightButton.addActionListener(e -> {
             // Final validation check before execution
-            if (!isValidPlaneSelection[0] || !isValidSourceDest[0] || !isValidDate[0] || !isValidReportingTime[0] || !isValidArrivalTime[0] || !isValidExpense[0]) {
+            if (!isValidPlaneSelection[0] || !isValidSourceDest[0] || !isValidReportingDateTime[0] || !isValidArrivalDateTime[0] || !isValidExpense[0]) {
                 JOptionPane.showMessageDialog(frame, "Please fill out all fields correctly to add a flight.", "Validation Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
@@ -736,8 +846,8 @@ public class AdminDashboard {
                 String source = (String) sourceComboBox.getSelectedItem();
                 String destination = (String) destComboBox.getSelectedItem();
 
-                Timestamp reportingTimestamp = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox, repHour, repMinute, repSecond);
-                Timestamp arrivalTimestamp = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox, arrHour, arrMinute, arrSecond);
+                Timestamp reportingTimestamp = getDateTimeFromPickers(repYearComboBox, repMonthComboBox, repDayComboBox, repHour, repMinute, repSecond);
+                Timestamp arrivalTimestamp = getDateTimeFromPickers(arrYearComboBox, arrMonthComboBox, arrDayComboBox, arrHour, arrMinute, arrSecond);
 
                 // This check is redundant with listeners but good for final validation
                 if (!arrivalTimestamp.after(reportingTimestamp)) {
@@ -752,13 +862,18 @@ public class AdminDashboard {
 
                 // Reset fields
                 expenseField.setText("");
-                yearComboBox.setSelectedItem(currentYear);
-                monthComboBox.setSelectedItem(currentMonth);
-                updateDays(yearComboBox, monthComboBox, dayComboBox, currentDay);
-                dayComboBox.setSelectedItem(currentDay);
+                repYearComboBox.setSelectedItem(currentYear);
+                repMonthComboBox.setSelectedItem(currentMonth);
+                updateDays(repYearComboBox, repMonthComboBox, repDayComboBox, currentDay);
+                repDayComboBox.setSelectedItem(currentDay);
                 repHour.setSelectedIndex(0);
                 repMinute.setSelectedIndex(0);
                 repSecond.setSelectedIndex(0);
+
+                arrYearComboBox.setSelectedItem(currentYear);
+                arrMonthComboBox.setSelectedItem(currentMonth);
+                updateDays(arrYearComboBox, arrMonthComboBox, arrDayComboBox, currentDay);
+                arrDayComboBox.setSelectedItem(currentDay);
                 arrHour.setSelectedIndex(0);
                 arrMinute.setSelectedIndex(0);
                 arrSecond.setSelectedIndex(0);
@@ -779,12 +894,14 @@ public class AdminDashboard {
         SwingUtilities.invokeLater(() -> {
             isValidPlaneSelection[0] = planeComboBox.getSelectedItem() != null && !((String) planeComboBox.getSelectedItem()).startsWith("No planes");
             isValidSourceDest[0] = sourceComboBox.getSelectedItem() != null && destComboBox.getSelectedItem() != null && !sourceComboBox.getSelectedItem().equals(destComboBox.getSelectedItem());
-            isValidDate[0] = isDateValid(yearComboBox, monthComboBox, dayComboBox);
-            isValidReportingTime[0] = isTimeValid(repHour, repMinute, repSecond);
-            isValidArrivalTime[0] = isTimeValid(arrHour, arrMinute, arrSecond);
+            isValidReportingDateTime[0] = isDateTimeValid(repYearComboBox, repMonthComboBox, repDayComboBox, repHour, repMinute, repSecond);
+            isValidArrivalDateTime[0] = isDateTimeValid(arrYearComboBox, arrMonthComboBox, arrDayComboBox, arrHour, arrMinute, arrSecond);
             try { isValidExpense[0] = Float.parseFloat(expenseField.getText().trim()) > 0; } catch (NumberFormatException ignored) {}
-            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidDate[0], isValidReportingTime[0], isValidArrivalTime[0], isValidExpense[0]);
-            updateHourComboBoxes(yearComboBox, monthComboBox, dayComboBox, repHour, arrHour);
+
+            validateDateTimeOrder(repYearComboBox, repMonthComboBox, repDayComboBox, repHour, repMinute, repSecond,
+                    arrYearComboBox, arrMonthComboBox, arrDayComboBox, arrHour, arrMinute, arrSecond,
+                    isValidReportingDateTime, isValidArrivalDateTime);
+            updateAddFlightButtonState(isValidPlaneSelection[0], isValidSourceDest[0], isValidReportingDateTime[0], isValidArrivalDateTime[0], isValidExpense[0]);
         });
 
         return outerPanel;
@@ -816,7 +933,7 @@ public class AdminDashboard {
 
         // --- Section 1: Select Flight ---
         JPanel flightSelectionPanel = new JPanel(new GridBagLayout());
-        flightSelectionPanel.setOpaque(false); // Inherit background from contentPanel
+        flightSelectionPanel.setOpaque(false);
         flightSelectionPanel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createEtchedBorder(), "1. Select Flight to Update"));
         GridBagConstraints fspGbc = new GridBagConstraints();
@@ -833,6 +950,14 @@ public class AdminDashboard {
         loadAdminFlights(flightIdComboBox, adminId);
         flightSelectionPanel.add(flightIdComboBox, fspGbc);
 
+        // Add feedback label for flight selection
+        fspGbc.gridx = 1;
+        fspGbc.gridy = 1;
+        JLabel flightSelectionFeedback = new JLabel(" Please select a flight. ");
+        flightSelectionFeedback.setFont(new Font("Arial", Font.PLAIN, 12));
+        flightSelectionFeedback.setForeground(Color.RED);
+        flightSelectionPanel.add(flightSelectionFeedback, fspGbc);
+
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridwidth = 2;
@@ -848,9 +973,10 @@ public class AdminDashboard {
         udpGbc.fill = GridBagConstraints.HORIZONTAL;
         udpGbc.anchor = GridBagConstraints.WEST;
 
+        // Field to update combo box
         udpGbc.gridx = 0;
         udpGbc.gridy = 0;
-        udpGbc.weightx = 0.3; // Adjust weight for label
+        udpGbc.weightx = 0.3;
         updateDetailsPanel.add(new JLabel("Field to Update:"), udpGbc);
         udpGbc.gridx = 1;
         udpGbc.weightx = 0.7;
@@ -858,61 +984,124 @@ public class AdminDashboard {
         JComboBox<String> fieldToUpdateCombo = new JComboBox<>(updateOptions);
         updateDetailsPanel.add(fieldToUpdateCombo, udpGbc);
 
+        // New value panel with feedback label
         udpGbc.gridx = 0;
         udpGbc.gridy = 1;
         updateDetailsPanel.add(new JLabel("New Value:"), udpGbc);
         udpGbc.gridx = 1;
         JPanel newValueInputPanel = new JPanel(new CardLayout());
         newValueInputPanel.setOpaque(false);
+        newValueInputPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 210, 220)),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        ));
         updateDetailsPanel.add(newValueInputPanel, udpGbc);
 
-        // 1. Airport Selection (for Source and Destination)
-        JComboBox<String> newAirportComboBox = new JComboBox<>();
-        loadAirports(newAirportComboBox);
-        newValueInputPanel.add(newAirportComboBox, "Airport");
+        // Feedback label for new value
+        udpGbc.gridx = 1;
+        udpGbc.gridy = 2;
+        JLabel newValueFeedback = new JLabel(" Please select a new value. ");
+        newValueFeedback.setFont(new Font("Arial", Font.PLAIN, 12));
+        newValueFeedback.setForeground(Color.RED);
+        updateDetailsPanel.add(newValueFeedback, udpGbc);
 
-        // 2. Date/Time Pickers (for Departure and Arrival Time)
-        JPanel dateTimePanel = new JPanel(new GridBagLayout());
-        dateTimePanel.setOpaque(false);
+        // 1. Airport Selection Card (for Source and Destination)
+        JPanel airportCard = new JPanel(new BorderLayout());
+        airportCard.setOpaque(false);
+        JComboBox<String> newAirportComboBox = createStyledComboBox();
+        newAirportComboBox.setPreferredSize(new Dimension(200, 25));
+        loadAirports(newAirportComboBox);
+        airportCard.add(newAirportComboBox, BorderLayout.CENTER);
+        newValueInputPanel.add(airportCard, "Airport");
+
+        // 2. Improved Date/Time Picker Card
+        JPanel dateTimeCard = new JPanel(new GridBagLayout());
+        dateTimeCard.setOpaque(false);
         GridBagConstraints dtGbc = new GridBagConstraints();
         dtGbc.insets = new Insets(3, 3, 3, 3);
         dtGbc.fill = GridBagConstraints.HORIZONTAL;
         dtGbc.anchor = GridBagConstraints.WEST;
 
-        JComboBox<Integer> dayComboBox = new JComboBox<>();
-        JComboBox<Integer> monthComboBox = new JComboBox<>();
-        JComboBox<Integer> yearComboBox = new JComboBox<>();
-        JComboBox<Integer> hourComboBox = new JComboBox<>();
-        JComboBox<Integer> minuteComboBox = new JComboBox<>();
-        JComboBox<Integer> secondComboBox = new JComboBox<>();
+        // Create styled combo boxes
+        JComboBox<Integer> dayComboBox = createStyledComboBox();
+        JComboBox<Integer> monthComboBox = createStyledComboBox();
+        JComboBox<Integer> yearComboBox = createStyledComboBox();
+        JComboBox<Integer> hourComboBox = createStyledComboBox();
+        JComboBox<Integer> minuteComboBox = createStyledComboBox();
+        JComboBox<Integer> secondComboBox = createStyledComboBox();
 
-        dtGbc.gridx = 0; dtGbc.gridy = 0; dtGbc.weightx = 0.1; dateTimePanel.add(new JLabel("D:"), dtGbc);
-        dtGbc.gridx = 1; dtGbc.weightx = 0.2; dateTimePanel.add(dayComboBox, dtGbc);
-        dtGbc.gridx = 2; dtGbc.weightx = 0.1; dateTimePanel.add(new JLabel("M:"), dtGbc);
-        dtGbc.gridx = 3; dtGbc.weightx = 0.2; dateTimePanel.add(monthComboBox, dtGbc);
-        dtGbc.gridx = 4; dtGbc.weightx = 0.1; dateTimePanel.add(new JLabel("Y:"), dtGbc);
-        dtGbc.gridx = 5; dtGbc.weightx = 0.3; dateTimePanel.add(yearComboBox, dtGbc);
+        // Date row
+        dtGbc.gridx = 0; dtGbc.gridy = 0;
+        dateTimeCard.add(new JLabel("Date:"), dtGbc);
 
-        dtGbc.gridx = 0; dtGbc.gridy = 1; dtGbc.gridwidth = 1; dateTimePanel.add(new JLabel("H:"), dtGbc);
-        dtGbc.gridx = 1; dateTimePanel.add(hourComboBox, dtGbc);
-        dtGbc.gridx = 2; dateTimePanel.add(new JLabel("M:"), dtGbc);
-        dtGbc.gridx = 3; dateTimePanel.add(minuteComboBox, dtGbc);
-        dtGbc.gridx = 4; dateTimePanel.add(new JLabel("S:"), dtGbc);
-        dtGbc.gridx = 5; dateTimePanel.add(secondComboBox, dtGbc);
+        dtGbc.gridx = 1;
+        dateTimeCard.add(dayComboBox, dtGbc);
+        dateTimeCard.add(new JLabel("/"), dtGbc);
 
-        Calendar cal = Calendar.getInstance();
-        int currentYr = cal.get(Calendar.YEAR);
-        for (int i = currentYr - 3; i <= currentYr + 5; i++) yearComboBox.addItem(i);
-        for (int i = 1; i <= 12; i++) monthComboBox.addItem(i);
-        for (int i = 0; i < 24; i++) hourComboBox.addItem(i);
-        for (int i = 0; i < 60; i++) minuteComboBox.addItem(i);
-        for (int i = 0; i < 60; i++) secondComboBox.addItem(i);
-        newValueInputPanel.add(dateTimePanel, "DateTime");
+        dtGbc.gridx = 2;
+        dateTimeCard.add(monthComboBox, dtGbc);
+        dateTimeCard.add(new JLabel("/"), dtGbc);
 
-        // 3. Plane Selection
-        JComboBox<String> newPlaneComboBox = new JComboBox<>();
+        dtGbc.gridx = 3;
+        dateTimeCard.add(yearComboBox, dtGbc);
+
+        // Time row
+        dtGbc.gridx = 0; dtGbc.gridy = 1;
+        dateTimeCard.add(new JLabel("Time:"), dtGbc);
+
+        dtGbc.gridx = 1;
+        dateTimeCard.add(hourComboBox, dtGbc);
+        dateTimeCard.add(new JLabel(":"), dtGbc);
+
+        dtGbc.gridx = 2;
+        dateTimeCard.add(minuteComboBox, dtGbc);
+        dateTimeCard.add(new JLabel(":"), dtGbc);
+
+        dtGbc.gridx = 3;
+        dateTimeCard.add(secondComboBox, dtGbc);
+
+        // Populate with current date/time
+        LocalDateTime now = LocalDateTime.now();
+        yearComboBox.setModel(new DefaultComboBoxModel<>(
+                IntStream.range(now.getYear() - 1, now.getYear() + 5)
+                        .boxed()
+                        .toArray(Integer[]::new)));
+        monthComboBox.setModel(new DefaultComboBoxModel<>(
+                IntStream.rangeClosed(1, 12)
+                        .boxed()
+                        .toArray(Integer[]::new)));
+        hourComboBox.setModel(new DefaultComboBoxModel<>(
+                IntStream.rangeClosed(0, 23)
+                        .boxed()
+                        .toArray(Integer[]::new)));
+        minuteComboBox.setModel(new DefaultComboBoxModel<>(
+                IntStream.rangeClosed(0, 59)
+                        .boxed()
+                        .toArray(Integer[]::new)));
+        secondComboBox.setModel(new DefaultComboBoxModel<>(
+                IntStream.rangeClosed(0, 59)
+                        .boxed()
+                        .toArray(Integer[]::new)));
+
+        // Set current values
+        yearComboBox.setSelectedItem(now.getYear());
+        monthComboBox.setSelectedItem(now.getMonthValue());
+        updateDays(yearComboBox, monthComboBox, dayComboBox, now.getDayOfMonth());
+        dayComboBox.setSelectedItem(now.getDayOfMonth());
+        hourComboBox.setSelectedItem(now.getHour());
+        minuteComboBox.setSelectedItem(now.getMinute());
+        secondComboBox.setSelectedItem(now.getSecond());
+
+        newValueInputPanel.add(dateTimeCard, "DateTime");
+
+        // 3. Plane Selection Card
+        JPanel planeCard = new JPanel(new BorderLayout());
+        planeCard.setOpaque(false);
+        JComboBox<String> newPlaneComboBox = createStyledComboBox();
+        newPlaneComboBox.setPreferredSize(new Dimension(200, 25));
         loadAdminPlanes(newPlaneComboBox, adminId);
-        newValueInputPanel.add(newPlaneComboBox, "Plane");
+        planeCard.add(newPlaneComboBox, BorderLayout.CENTER);
+        newValueInputPanel.add(planeCard, "Plane");
 
         // Add the update details panel to the main content panel
         gbc.gridx = 0;
@@ -920,7 +1109,79 @@ public class AdminDashboard {
         gbc.gridwidth = 2;
         contentPanel.add(updateDetailsPanel, gbc);
 
-        // --- Logic to switch between input panels and manage button state ---
+        // --- Enhanced Validation Logic with Document Listeners ---
+        Runnable updateValidationState = () -> {
+            boolean flightSelected = flightIdComboBox.getSelectedItem() != null &&
+                    !((String) flightIdComboBox.getSelectedItem()).startsWith("No flights");
+
+            if (flightSelected) {
+                flightSelectionFeedback.setText("✓ Flight selected");
+                flightSelectionFeedback.setForeground(new Color(0, 150, 0));
+            } else {
+                flightSelectionFeedback.setText("✘ Please select a flight");
+                flightSelectionFeedback.setForeground(Color.RED);
+            }
+
+            boolean newValueValid = false;
+            String selectedField = (String) fieldToUpdateCombo.getSelectedItem();
+            String feedbackMessage = "✓ Valid";
+            Color feedbackColor = new Color(0, 150, 0);
+
+            if (selectedField != null) {
+                switch (selectedField) {
+                    case "Source":
+                    case "Destination":
+                        newValueValid = newAirportComboBox.getSelectedItem() != null;
+                        if (!newValueValid) {
+                            feedbackMessage = "✘ Please select an airport";
+                            feedbackColor = Color.RED;
+                        }
+                        break;
+                    case "Departure Time":
+                        newValueValid = isDateValid(yearComboBox, monthComboBox, dayComboBox) &&
+                                isTimeValid(hourComboBox, minuteComboBox, secondComboBox) &&
+                                isFutureDateTime(yearComboBox, monthComboBox, dayComboBox,
+                                        hourComboBox, minuteComboBox, secondComboBox);
+                        if (!newValueValid) {
+                            if (!isDateValid(yearComboBox, monthComboBox, dayComboBox) ||
+                                    !isTimeValid(hourComboBox, minuteComboBox, secondComboBox)) {
+                                feedbackMessage = "✘ Please select valid date/time";
+                            } else {
+                                feedbackMessage = "✘ Departure time must be in the future";
+                            }
+                            feedbackColor = Color.RED;
+                        }
+                        break;
+                    case "Arrival Time":
+                        newValueValid = isDateValid(yearComboBox, monthComboBox, dayComboBox) &&
+                                isTimeValid(hourComboBox, minuteComboBox, secondComboBox);
+                        if (!newValueValid) {
+                            feedbackMessage = "✘ Please select valid date/time";
+                            feedbackColor = Color.RED;
+                        }
+                        break;
+                    case "Plane":
+                        newValueValid = newPlaneComboBox.getSelectedItem() != null;
+                        if (!newValueValid) {
+                            feedbackMessage = "✘ Please select a plane";
+                            feedbackColor = Color.RED;
+                        }
+                        break;
+                }
+            } else {
+                feedbackMessage = "✘ Please select a field to update";
+                feedbackColor = Color.RED;
+            }
+
+            newValueFeedback.setText(feedbackMessage);
+            newValueFeedback.setForeground(feedbackColor);
+
+            isValidFlightSelected[0] = flightSelected;
+            isValidNewValue[0] = newValueValid;
+            updateUpdateButtonState(isValidFlightSelected[0], isValidNewValue[0]);
+        };
+
+        // Prefill logic for date/time panel
         Runnable prefillDateTimePanelLogic = () -> {
             String selectedFlightItem = (String) flightIdComboBox.getSelectedItem();
             String selectedField = (String) fieldToUpdateCombo.getSelectedItem();
@@ -957,93 +1218,56 @@ public class AdminDashboard {
             }
         };
 
-        // Add listeners to validate the form and enable/disable the button
-        Runnable updateValidationState = () -> {
-            boolean flightSelected = flightIdComboBox.getSelectedItem() != null && !((String) flightIdComboBox.getSelectedItem()).startsWith("No flights");
-
-            boolean newValueValid = false;
-            String selectedField = (String) fieldToUpdateCombo.getSelectedItem();
-            if (selectedField != null) {
-                switch (selectedField) {
-                    case "Source":
-                    case "Destination":
-                        newValueValid = newAirportComboBox.getSelectedItem() != null;
-                        break;
-                    case "Departure Time":
-                    case "Arrival Time":
-                        newValueValid = isDateValid(yearComboBox, monthComboBox, dayComboBox) &&
-                                isTimeValid(hourComboBox, minuteComboBox, secondComboBox);
-                        break;
-                    case "Plane":
-                        newValueValid = newPlaneComboBox.getSelectedItem() != null;
-                        break;
-                }
-            }
-            isValidFlightSelected[0] = flightSelected;
-            isValidNewValue[0] = newValueValid;
-            updateUpdateButtonState(isValidFlightSelected[0], isValidNewValue[0]);
-        };
-
+        // Add listeners to all components
         flightIdComboBox.addItemListener(e -> {
-            prefillDateTimePanelLogic.run();
             updateValidationState.run();
+            prefillDateTimePanelLogic.run();
         });
 
-        CardLayout cardLayout = (CardLayout) newValueInputPanel.getLayout();
         fieldToUpdateCombo.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 String selectedField = (String) e.getItem();
+                CardLayout cl = (CardLayout) newValueInputPanel.getLayout();
                 switch (selectedField) {
                     case "Source":
                     case "Destination":
-                        cardLayout.show(newValueInputPanel, "Airport");
+                        cl.show(newValueInputPanel, "Airport");
                         break;
                     case "Departure Time":
                     case "Arrival Time":
                         prefillDateTimePanelLogic.run();
-                        cardLayout.show(newValueInputPanel, "DateTime");
+                        cl.show(newValueInputPanel, "DateTime");
                         break;
                     case "Plane":
-                        cardLayout.show(newValueInputPanel, "Plane");
+                        cl.show(newValueInputPanel, "Plane");
                         break;
                 }
                 updateValidationState.run();
             }
         });
 
-        ActionListener dateTimeChangeListener = evt -> {
-            if (yearComboBox.getSelectedItem() != null && monthComboBox.getSelectedItem() != null) {
-                updateDays(yearComboBox, monthComboBox, dayComboBox, (Integer) dayComboBox.getSelectedItem());
-                updateHourComboBoxes(yearComboBox, monthComboBox, dayComboBox, hourComboBox, hourComboBox);
-            }
-            updateValidationState.run();
-        };
-        yearComboBox.addActionListener(dateTimeChangeListener);
-        monthComboBox.addActionListener(dateTimeChangeListener);
-        dayComboBox.addActionListener(dateTimeChangeListener);
-        hourComboBox.addActionListener(dateTimeChangeListener);
-        minuteComboBox.addActionListener(dateTimeChangeListener);
-        secondComboBox.addActionListener(dateTimeChangeListener);
+        // Add listeners to all combo boxes
+        ItemListener comboBoxListener = e -> updateValidationState.run();
+        newAirportComboBox.addItemListener(comboBoxListener);
+        newPlaneComboBox.addItemListener(comboBoxListener);
+        yearComboBox.addItemListener(comboBoxListener);
+        monthComboBox.addItemListener(comboBoxListener);
+        dayComboBox.addItemListener(comboBoxListener);
+        hourComboBox.addItemListener(comboBoxListener);
+        minuteComboBox.addItemListener(comboBoxListener);
+        secondComboBox.addItemListener(comboBoxListener);
 
-        newAirportComboBox.addActionListener(e -> updateValidationState.run());
-        newPlaneComboBox.addActionListener(e -> updateValidationState.run());
-
-        if (flightIdComboBox.getItemCount() > 0 && !((String) flightIdComboBox.getSelectedItem()).startsWith("No flights")) {
-            prefillDateTimePanelLogic.run();
-        }
-        fieldToUpdateCombo.setSelectedIndex(0);
-
-        // --- Section 3: Update Button ---
+        // --- Update Button ---
         gbc.gridx = 0;
         gbc.gridy = 2;
         gbc.gridwidth = 2;
         gbc.anchor = GridBagConstraints.CENTER;
-        gbc.fill = GridBagConstraints.HORIZONTAL; // FIX: Make the button stretch
+        gbc.fill = GridBagConstraints.NONE;
         updateFlightButton = createStyledButton("Execute Update", null);
-        updateFlightButton.setEnabled(false); // Initially disabled
+        updateFlightButton.setEnabled(false);
         contentPanel.add(updateFlightButton, gbc);
 
-        // Set action listener for the button
+        // Button action listener
         updateFlightButton.addActionListener(e -> {
             if (!isValidFlightSelected[0] || !isValidNewValue[0]) {
                 JOptionPane.showMessageDialog(frame, "Please ensure all fields are selected and valid.", "Validation Error", JOptionPane.ERROR_MESSAGE);
@@ -1079,11 +1303,17 @@ public class AdminDashboard {
                         break;
                     case "Departure Time":
                         columnName = "reporting_time";
-                        newValue = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox, hourComboBox, minuteComboBox, secondComboBox);
+                        newValue = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox,
+                                hourComboBox, minuteComboBox, secondComboBox);
+                        if (!isFutureDateTime(yearComboBox, monthComboBox, dayComboBox,
+                                hourComboBox, minuteComboBox, secondComboBox)) {
+                            throw new IllegalArgumentException("Departure time must be in the future.");
+                        }
                         break;
                     case "Arrival Time":
                         columnName = "arrival_time";
-                        newValue = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox, hourComboBox, minuteComboBox, secondComboBox);
+                        newValue = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox,
+                                hourComboBox, minuteComboBox, secondComboBox);
                         break;
                     case "Plane":
                         columnName = "plane_id";
@@ -1100,7 +1330,9 @@ public class AdminDashboard {
                     updateFlight(flightId, columnName, newValue);
                     int currentFlightSelectionIndex = flightIdComboBox.getSelectedIndex();
                     loadAdminFlights(flightIdComboBox, adminId);
-                    if(flightIdComboBox.getItemCount() > currentFlightSelectionIndex) flightIdComboBox.setSelectedIndex(currentFlightSelectionIndex);
+                    if(flightIdComboBox.getItemCount() > currentFlightSelectionIndex) {
+                        flightIdComboBox.setSelectedIndex(currentFlightSelectionIndex);
+                    }
                 }
             } catch (IllegalArgumentException exVal) {
                 JOptionPane.showMessageDialog(frame, exVal.getMessage(), "Validation Error", JOptionPane.ERROR_MESSAGE);
@@ -1119,10 +1351,132 @@ public class AdminDashboard {
         outerGbc.anchor = GridBagConstraints.CENTER;
         outerPanel.add(contentPanel, outerGbc);
 
-        // Initial validation check
+        // Initial validation
         SwingUtilities.invokeLater(updateValidationState);
 
         return outerPanel;
+    }
+
+// ================= HELPER METHODS ================= //
+private boolean isFutureDateTime(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo,
+                                 JComboBox<Integer> dayCombo, JComboBox<Integer> hourCombo,
+                                 JComboBox<Integer> minuteCombo, JComboBox<Integer> secondCombo) {
+    if (!isDateValid(yearCombo, monthCombo, dayCombo)) {
+        return false;
+    }
+    if (!isTimeValid(hourCombo, minuteCombo, secondCombo)) {
+        return false;
+    }
+
+    LocalDateTime selectedDateTime = LocalDateTime.of(
+            (Integer) yearCombo.getSelectedItem(),
+            (Integer) monthCombo.getSelectedItem(),
+            (Integer) dayCombo.getSelectedItem(),
+            (Integer) hourCombo.getSelectedItem(),
+            (Integer) minuteCombo.getSelectedItem(),
+            (Integer) secondCombo.getSelectedItem()
+    );
+
+    return selectedDateTime.isAfter(LocalDateTime.now());
+}
+
+    private <T> JComboBox<T> createStyledComboBox() {
+        JComboBox<T> comboBox = new JComboBox<>();
+        comboBox.setBackground(Color.WHITE);
+        comboBox.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(180, 190, 200)),
+                BorderFactory.createEmptyBorder(2, 5, 2, 5)
+        ));
+        comboBox.setFont(new Font("Arial", Font.PLAIN, 12));
+        return comboBox;
+    }
+
+    private void updateDays(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo,
+                            JComboBox<Integer> dayCombo, int selectedDay) {
+        if (yearCombo.getSelectedItem() == null || monthCombo.getSelectedItem() == null) return;
+
+        int year = (Integer) yearCombo.getSelectedItem();
+        int month = (Integer) monthCombo.getSelectedItem();
+        YearMonth yearMonth = YearMonth.of(year, month);
+        int daysInMonth = yearMonth.lengthOfMonth();
+
+        DefaultComboBoxModel<Integer> model = new DefaultComboBoxModel<>();
+        for (int i = 1; i <= daysInMonth; i++) {
+            model.addElement(i);
+        }
+        dayCombo.setModel(model);
+
+        if (selectedDay > 0 && selectedDay <= daysInMonth) {
+            dayCombo.setSelectedItem(selectedDay);
+        } else {
+            dayCombo.setSelectedItem(1);
+        }
+    }
+
+    private boolean isDateValid(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo,
+                                JComboBox<Integer> dayCombo) {
+        return yearCombo.getSelectedItem() != null &&
+                monthCombo.getSelectedItem() != null &&
+                dayCombo.getSelectedItem() != null;
+    }
+
+    private boolean isTimeValid(JComboBox<Integer> hourCombo, JComboBox<Integer> minuteCombo,
+                                JComboBox<Integer> secondCombo) {
+        return hourCombo.getSelectedItem() != null &&
+                minuteCombo.getSelectedItem() != null &&
+                secondCombo.getSelectedItem() != null;
+    }
+
+    private void populateComboBox(JComboBox<Integer> comboBox, int min, int max) {
+        DefaultComboBoxModel<Integer> model = new DefaultComboBoxModel<>();
+        for (int i = min; i <= max; i++) {
+            model.addElement(i);
+        }
+        comboBox.setModel(model);
+    }
+
+    private void populateDateTimeWithCurrent(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo,
+                                             JComboBox<Integer> dayCombo, JComboBox<Integer> hourCombo,
+                                             JComboBox<Integer> minuteCombo, JComboBox<Integer> secondCombo) {
+        LocalDateTime now = LocalDateTime.now();
+        yearCombo.setSelectedItem(now.getYear());
+        monthCombo.setSelectedItem(now.getMonthValue());
+        updateDays(yearCombo, monthCombo, dayCombo, now.getDayOfMonth());
+        hourCombo.setSelectedItem(now.getHour());
+        minuteCombo.setSelectedItem(now.getMinute());
+        secondCombo.setSelectedItem(now.getSecond());
+    }
+
+    private void updateHourComboBoxes(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo,
+                                      JComboBox<Integer> dayCombo, JComboBox<Integer> hourCombo,
+                                      JComboBox<Integer> minuteCombo) {
+        // This method can be enhanced to validate time ranges if needed
+    }
+    // Helper method to validate date and time combination
+    private boolean isDateTimeValid(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo,
+                                    JComboBox<Integer> dayCombo, JComboBox<Integer> hourCombo,
+                                    JComboBox<Integer> minuteCombo, JComboBox<Integer> secondCombo) {
+        return isDateValid(yearCombo, monthCombo, dayCombo) &&
+                isTimeValid(hourCombo, minuteCombo, secondCombo);
+    }
+    // Helper method to validate that arrival datetime is after reporting datetime
+    private void validateDateTimeOrder(JComboBox<Integer> repYear, JComboBox<Integer> repMonth, JComboBox<Integer> repDay,
+                                       JComboBox<Integer> repHour, JComboBox<Integer> repMinute, JComboBox<Integer> repSecond,
+                                       JComboBox<Integer> arrYear, JComboBox<Integer> arrMonth, JComboBox<Integer> arrDay,
+                                       JComboBox<Integer> arrHour, JComboBox<Integer> arrMinute, JComboBox<Integer> arrSecond,
+                                       boolean[] isValidReporting, boolean[] isValidArrival) {
+        if (isValidReporting[0] && isValidArrival[0]) {
+            Timestamp repTs = getDateTimeFromPickers(repYear, repMonth, repDay, repHour, repMinute, repSecond);
+            Timestamp arrTs = getDateTimeFromPickers(arrYear, arrMonth, arrDay, arrHour, arrMinute, arrSecond);
+            if (arrTs != null && repTs != null && !arrTs.after(repTs)) {
+                isValidArrival[0] = false; // Invalid arrival time
+            }
+        }
+    }
+    // Updated method signature for button state
+    private void updateAddFlightButtonState(boolean validPlane, boolean validSourceDest,
+                                            boolean validReporting, boolean validArrival, boolean validExpense) {
+        addFlightButton.setEnabled(validPlane && validSourceDest && validReporting && validArrival && validExpense);
     }
 
     private void updateAddPlaneButtonState(JButton button, boolean... conditions) {
@@ -1180,107 +1534,6 @@ public class AdminDashboard {
             e.printStackTrace(); // Added to help with debugging
         }
     }
-
-    // --- MODIFIED createAddFlightCard ---
-
-
-    private void updateAddFlightButtonState(boolean isValidPlane, boolean isValidSourceDest, boolean isValidDate,
-                                            boolean isValidRepTime, boolean isValidArrTime, boolean isValidExpense) {
-        if (addFlightButton != null) {
-            boolean allValid = isValidPlane && isValidSourceDest && isValidDate && isValidRepTime && isValidArrTime && isValidExpense;
-            addFlightButton.setEnabled(allValid);
-        }
-    }
-
-    private boolean isDateValid(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo, JComboBox<Integer> dayCombo) {
-        Integer year = (Integer) yearCombo.getSelectedItem();
-        Integer month = (Integer) monthCombo.getSelectedItem();
-        Integer day = (Integer) dayCombo.getSelectedItem();
-
-        if (year == null || month == null || day == null) return false;
-
-        try {
-            LocalDate selectedDate = LocalDate.of(year, month, day);
-            LocalDate today = LocalDate.now();
-            return !selectedDate.isBefore(today);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private boolean isTimeValid(JComboBox<Integer> hourCombo, JComboBox<Integer> minuteCombo, JComboBox<Integer> secondCombo) {
-        Integer hour = (Integer) hourCombo.getSelectedItem();
-        Integer minute = (Integer) minuteCombo.getSelectedItem();
-        Integer second = (Integer) secondCombo.getSelectedItem();
-
-        return hour != null && minute != null && second != null;
-    }
-
-    // New helper method to populate JComboBox
-    private void populateComboBox(JComboBox<Integer> comboBox, int start, int end) {
-        Integer selected = (Integer) comboBox.getSelectedItem();
-        comboBox.removeAllItems();
-        for (int i = start; i <= end; i++) {
-            comboBox.addItem(i);
-        }
-        if (selected != null && start <= selected && selected <= end) {
-            comboBox.setSelectedItem(selected);
-        } else if (comboBox.getItemCount() > 0) {
-            comboBox.setSelectedIndex(0);
-        }
-    }
-    // FIX: A more robust updateHourComboBoxes method
-    private void updateHourComboBoxes(JComboBox<Integer> yearComboBox, JComboBox<Integer> monthComboBox,
-                                      JComboBox<Integer> dayComboBox, JComboBox<Integer> repHourComboBox,
-                                      JComboBox<Integer> arrHourComboBox) {
-        Integer selectedYearObj = (Integer) yearComboBox.getSelectedItem();
-        Integer selectedMonthObj = (Integer) monthComboBox.getSelectedItem();
-        Integer selectedDayObj = (Integer) dayComboBox.getSelectedItem();
-
-        if (selectedYearObj == null || selectedMonthObj == null || selectedDayObj == null) {
-            // Not enough info to update, set to full range
-            populateComboBox(repHourComboBox, 0, 23);
-            populateComboBox(arrHourComboBox, 0, 23);
-            return;
-        }
-
-        int selectedYear = selectedYearObj;
-        int selectedMonth = selectedMonthObj;
-        int selectedDay = selectedDayObj;
-
-        LocalDate selectedDate = LocalDate.of(selectedYear, selectedMonth, selectedDay);
-        LocalDate today = LocalDate.now();
-        LocalTime now = LocalTime.now();
-
-        int startHour = 0;
-        if (selectedDate.isEqual(today)) {
-            startHour = now.getHour();
-        }
-
-        // Populate reporting hour combo box
-        populateComboBox(repHourComboBox, startHour, 23);
-
-        // Populate arrival hour combo box based on reporting hour selection
-        populateComboBox(arrHourComboBox, startHour, 23);
-
-        // Add a listener to repHourComboBox to constrain arrHourComboBox
-        // Remove existing listeners to avoid duplicates
-        for (ActionListener al : repHourComboBox.getActionListeners()) {
-            repHourComboBox.removeActionListener(al);
-        }
-        repHourComboBox.addActionListener(e -> {
-            Integer selectedRepH = (Integer) repHourComboBox.getSelectedItem();
-            if (selectedRepH != null) {
-                Integer selectedArrH = (Integer) arrHourComboBox.getSelectedItem();
-                // If the selected arrival hour is less than the new reporting hour,
-                // adjust it to be equal to or greater than the reporting hour.
-                if (selectedArrH == null || selectedArrH < selectedRepH) {
-                    arrHourComboBox.setSelectedItem(selectedRepH);
-                }
-            }
-        });
-    }
-
     private void loadAirports(JComboBox<String> comboBox) {
         comboBox.removeAllItems();
         String sql = "SELECT CONCAT(airport_code, ' - ', airport_name, ' (', city, ', ', country, ')') AS display_text " +
@@ -1295,7 +1548,6 @@ public class AdminDashboard {
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-
     /**
      * Updates the day JComboBox based on the selected year and month.
      */
@@ -1320,7 +1572,6 @@ public class AdminDashboard {
             dayComboBox.setSelectedIndex(0); // Select the first day if previous is invalid
         }
     }
-
     private void addFlight(Connection connection, int plane_id, String source, String destination,
                            Timestamp arrival_time, Timestamp reporting_time, float expense) {
         try {
@@ -1368,7 +1619,6 @@ public class AdminDashboard {
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-
     private void switchCard(String cardName) {
         JPanel rightPanel = (JPanel) frame.getContentPane().getComponent(1);
         JPanel centerPanel = (JPanel) rightPanel.getComponent(1);
@@ -1376,7 +1626,6 @@ public class AdminDashboard {
         CardLayout layout = (CardLayout) centerPanel.getLayout();
         layout.show(centerPanel, cardName);
     }
-
     private void loadAdminFlights(JComboBox<String> flightComboBox, int adminId) {
         // SQL to get flights whose plane_id belongs to a plane associated with the adminId
         // This query assumes a 'plane' table with 'id' and 'admin_id' columns.
@@ -1430,7 +1679,6 @@ public class AdminDashboard {
             flightComboBox.setEnabled(false);
         }
     }
-
     /**
      * Retrieves the reporting_time (departure) and arrival_time for a specific flight.
      *
@@ -1459,35 +1707,6 @@ public class AdminDashboard {
             return null;
         }
     }
-
-    // --- MODIFIED createUpdateFlightCard ---
-
-
-    private void populateDateTimeWithCurrent(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo, JComboBox<Integer> dayCombo,
-                                             JComboBox<Integer> hourCombo, JComboBox<Integer> minuteCombo, JComboBox<Integer> secondCombo) {
-        Calendar nowCal = Calendar.getInstance();
-        yearCombo.setSelectedItem(nowCal.get(Calendar.YEAR));
-        monthCombo.setSelectedItem(nowCal.get(Calendar.MONTH) + 1);
-        updateDays(yearCombo, monthCombo, dayCombo, nowCal.get(Calendar.DAY_OF_MONTH));
-        dayCombo.setSelectedItem(nowCal.get(Calendar.DAY_OF_MONTH));
-        updateHourComboBoxes(yearCombo, monthCombo, dayCombo, hourCombo, hourCombo);
-        if (hourCombo.getItemCount() > 0) {
-            int currentHour = nowCal.get(Calendar.HOUR_OF_DAY);
-            boolean currentHourFound = false;
-            for (int i = 0; i < hourCombo.getItemCount(); i++) {
-                if (hourCombo.getItemAt(i) == currentHour) {
-                    hourCombo.setSelectedItem(currentHour);
-                    currentHourFound = true;
-                    break;
-                }
-            }
-            if (!currentHourFound)
-                hourCombo.setSelectedIndex(0);
-        }
-        minuteCombo.setSelectedItem(nowCal.get(Calendar.MINUTE));
-        secondCombo.setSelectedItem(nowCal.get(Calendar.SECOND));
-    }
-
     private Timestamp getDateTimeFromPickers(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo, JComboBox<Integer> dayCombo,
                                              JComboBox<Integer> hourCombo, JComboBox<Integer> minuteCombo, JComboBox<Integer> secondCombo) {
         Integer year = (Integer) yearCombo.getSelectedItem();
@@ -1516,7 +1735,6 @@ public class AdminDashboard {
         LocalTime selectedTime = LocalTime.of(hour, minute, second);
         return Timestamp.valueOf(selectedDate.atTime(selectedTime));
     }
-
     private void updateFlight(int flightId, String columnName, Object newValue) {
         if (columnName == null || columnName.trim().isEmpty() || columnName.equalsIgnoreCase("id")) {
             JOptionPane.showMessageDialog(frame, "Invalid field to update: " + columnName, "Error", JOptionPane.ERROR_MESSAGE);
@@ -1559,13 +1777,11 @@ public class AdminDashboard {
             JOptionPane.showMessageDialog(frame, "Failed to update flight: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-
     private void updateUpdateButtonState(boolean isFlightSelected, boolean isNewValueValid) {
         if (updateFlightButton != null) {
             updateFlightButton.setEnabled(isFlightSelected && isNewValueValid);
         }
     }
-
     private String[][] extractData(ResultSet resultSet, int columnCount) throws SQLException {
         if (resultSet == null) {
             return new String[][]{};
@@ -1600,7 +1816,6 @@ public class AdminDashboard {
             return dataList.toArray(new String[0][0]);
         }
     }
-
     private String[][] fetchPlanes(int adminId) {
         String query = "SELECT id, plane_model, manufacturer, business_seats, economy_seats " +
                 "FROM plane WHERE admin_id = ?";
@@ -1617,7 +1832,6 @@ public class AdminDashboard {
             return new String[][]{};
         }
     }
-
     private void refreshPlanesTable() {
         String[] columns = {"Plane ID", "Plane Model", "Manufacturer", "Business Seats", "Economy Seats"};
         String[][] newData = fetchPlanes(this.adminId);
@@ -1625,7 +1839,13 @@ public class AdminDashboard {
         planesTable.setModel(model);
         planesTable.repaint();
     }
-
+    private void refreshFlightsTable() {
+        String[] columns = {"Flight ID", "Source", "Destination", "Reporting Time", "Arrival Time"};
+        String[][] newData = fetchFlights();
+        DefaultTableModel model = new DefaultTableModel(newData, columns);
+        flightsTable.setModel(model);
+        flightsTable.repaint();
+    }
     private String[][] fetchBookings() {
         String sql = "SELECT b.id, " +
                 "c.name AS client_name, " +
@@ -1660,7 +1880,6 @@ public class AdminDashboard {
             return new String[0][0];
         }
     }
-
     private String[][] fetchFlights() {
         try (Statement statement = connection.createStatement(
                 ResultSet.TYPE_SCROLL_INSENSITIVE,
@@ -1674,15 +1893,6 @@ public class AdminDashboard {
             return new String[][]{};
         }
     }
-
-    private void refreshFlightsTable() {
-        String[] columns = {"Flight ID", "Source", "Destination", "Reporting Time", "Arrival Time"};
-        String[][] newData = fetchFlights();
-        DefaultTableModel model = new DefaultTableModel(newData, columns);
-        flightsTable.setModel(model);
-        flightsTable.repaint();
-    }
-
     private JPanel createViewPlanesCard() {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(new Color(220, 240, 255));
@@ -1711,8 +1921,6 @@ public class AdminDashboard {
         card.add(scrollPane, BorderLayout.CENTER);
         return card;
     }
-
-
     private JPanel createViewBookingsCard() {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(new Color(220, 240, 255));
@@ -1757,7 +1965,6 @@ public class AdminDashboard {
         card.add(buttonPanel, BorderLayout.SOUTH);
         return card;
     }
-
     private JPanel createViewFlightsCard() {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(new Color(220, 240, 255));
@@ -1786,7 +1993,6 @@ public class AdminDashboard {
         card.add(bottomPanel, BorderLayout.SOUTH);
         return card;
     }
-
     private JPanel createMyFlightsCard() {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(new Color(220, 240, 255));
@@ -1839,7 +2045,6 @@ public class AdminDashboard {
             return new String[][]{};
         }
     }
-
     private int countAdminFlights(int adminId) {
         int flightCount = 0;
         try {
@@ -1861,7 +2066,6 @@ public class AdminDashboard {
         }
         return flightCount;
     }
-
     private int countAdminPlanes(int adminId) {
         int planeCount = 0;
         try {
@@ -1881,12 +2085,10 @@ public class AdminDashboard {
         }
         return planeCount;
     }
-
     private String formatCurrency(double amount) {
         DecimalFormat formatter = new DecimalFormat("#,###.00");
         return formatter.format(amount);
     }
-
     private JPanel createMyDetailsCard() {
         int flightCount = countAdminFlights(adminId);
         int planeCount = countAdminPlanes(adminId);
@@ -1961,19 +2163,6 @@ public class AdminDashboard {
         outerPanel.add(contentPanel, new GridBagConstraints());
         return outerPanel;
     }
-
-    private void addLabelAndValue(JPanel panel, GridBagConstraints gbc, int row, String label, String value) {
-        gbc.gridx = 0;
-        gbc.gridy = row;
-        JLabel nameLabel = new JLabel(label);
-        nameLabel.setFont(new Font("Arial", Font.BOLD, 12));
-        panel.add(nameLabel, gbc);
-
-        gbc.gridx = 1;
-        JLabel valueLabel = new JLabel(value);
-        panel.add(valueLabel, gbc);
-    }
-
     private void logout() {
         try {
             if (connection != null) {
