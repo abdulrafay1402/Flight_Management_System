@@ -237,13 +237,6 @@ public class AdminDashboard {
 
         return button;
     }
-    private JComboBox<String> createStyledComboBox(String[] items) {
-        JComboBox<String> comboBox = new JComboBox<>(items);
-        comboBox.setFont(new Font("Poppins", Font.PLAIN, 14));
-        comboBox.setBackground(Color.WHITE);
-        // We don't set a custom border here to keep the native look of the combo box arrow
-        return comboBox;
-    }
     private static JLabel createImageLabel(String imagePath) {
         ImageIcon img = new ImageIcon(imagePath);
         Image image = img.getImage().getScaledInstance(200, 200, Image.SCALE_SMOOTH);
@@ -956,7 +949,7 @@ public class AdminDashboard {
 
         return outerPanel;
     }
-   private JPanel createUpdateFlightCard(int adminId) {
+    private JPanel createUpdateFlightCard(int adminId) {
         JPanel outerPanel = new JPanel(new GridBagLayout());
         outerPanel.setBackground(new Color(220, 240, 255));
         outerPanel.setName("UPDATE_FLIGHT");
@@ -1148,11 +1141,20 @@ public class AdminDashboard {
         // 3. Plane Selection Card
         JPanel planeCard = new JPanel(new BorderLayout());
         planeCard.setOpaque(false);
-        JComboBox<String> newPlaneComboBox = createStyledComboBox();
+        JComboBox<String> newPlaneComboBox = new JComboBox<>();
         newPlaneComboBox.setPreferredSize(new Dimension(200, 25));
+
+        // Add refresh button
+        JButton refreshPlanesBtn = new JButton("Refresh Planes");
+        refreshPlanesBtn.addActionListener(e -> loadAdminPlanes(newPlaneComboBox, adminId));
+
+        JPanel planeCardWithRefresh = new JPanel(new BorderLayout());
+        planeCardWithRefresh.setOpaque(false);
+        planeCardWithRefresh.add(newPlaneComboBox, BorderLayout.CENTER);
+        planeCardWithRefresh.add(refreshPlanesBtn, BorderLayout.EAST);
+
         loadAdminPlanes(newPlaneComboBox, adminId);
-        planeCard.add(newPlaneComboBox, BorderLayout.CENTER);
-        newValueInputPanel.add(planeCard, "Plane");
+        newValueInputPanel.add(planeCardWithRefresh, "Plane");
 
         // Add the update details panel to the main content panel
         gbc.gridx = 0;
@@ -1190,23 +1192,40 @@ public class AdminDashboard {
                         break;
                     case "Departure Time":
                         newValueValid = isDateValid(yearComboBox, monthComboBox, dayComboBox) &&
-                                isTimeValid(hourComboBox, minuteComboBox, secondComboBox) &&
-                                isFutureDateTime(yearComboBox, monthComboBox, dayComboBox,
-                                        hourComboBox, minuteComboBox, secondComboBox);
+                                isTimeValid(hourComboBox, minuteComboBox, secondComboBox);
+
                         if (!newValueValid) {
-                            if (!isDateValid(yearComboBox, monthComboBox, dayComboBox) ||
-                                    !isTimeValid(hourComboBox, minuteComboBox, secondComboBox)) {
-                                feedbackMessage = "✘ Please select valid date/time";
-                            } else {
-                                feedbackMessage = "✘ Departure time must be in the future";
-                            }
+                            feedbackMessage = "✘ Please select valid date/time";
                             feedbackColor = Color.RED;
                         }
                         break;
                     case "Arrival Time":
                         newValueValid = isDateValid(yearComboBox, monthComboBox, dayComboBox) &&
                                 isTimeValid(hourComboBox, minuteComboBox, secondComboBox);
-                        if (!newValueValid) {
+
+                        if (newValueValid) {
+                            // Get departure time from the flight
+                            String selectedFlight = (String) flightIdComboBox.getSelectedItem();
+                            if (selectedFlight != null && selectedFlight.startsWith("ID: ")) {
+                                try {
+                                    int flightId = Integer.parseInt(selectedFlight.substring(4, selectedFlight.indexOf(" |")).trim());
+                                    Timestamp[] times = getFlightTimestamps(flightId);
+                                    if (times != null && times[0] != null) {
+                                        Timestamp newArrival = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox,
+                                                hourComboBox, minuteComboBox, secondComboBox);
+
+                                        // Check if arrival is at least 1 hour after departure
+                                        if (newArrival.getTime() - times[0].getTime() < 3600000) {
+                                            newValueValid = false;
+                                            feedbackMessage = "✘ Arrival must be at least 1 hour after departure";
+                                            feedbackColor = Color.RED;
+                                        }
+                                    }
+                                } catch (Exception e) {
+                                    // Ignore parsing errors
+                                }
+                            }
+                        } else {
                             feedbackMessage = "✘ Please select valid date/time";
                             feedbackColor = Color.RED;
                         }
@@ -1356,15 +1375,23 @@ public class AdminDashboard {
                         columnName = "reporting_time";
                         newValue = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox,
                                 hourComboBox, minuteComboBox, secondComboBox);
-                        if (!isFutureDateTime(yearComboBox, monthComboBox, dayComboBox,
-                                hourComboBox, minuteComboBox, secondComboBox)) {
-                            throw new IllegalArgumentException("Departure time must be in the future.");
+
+                        // Get current arrival time
+                        Timestamp currentArrival = getCurrentArrivalTime(flightId);
+                        if (currentArrival != null && ((Timestamp)newValue).after(currentArrival)) {
+                            throw new IllegalArgumentException("Departure time cannot be after the current arrival time");
                         }
                         break;
                     case "Arrival Time":
                         columnName = "arrival_time";
                         newValue = getDateTimeFromPickers(yearComboBox, monthComboBox, dayComboBox,
                                 hourComboBox, minuteComboBox, secondComboBox);
+
+                        // Get current departure time
+                        Timestamp currentDeparture = getCurrentDepartureTime(flightId);
+                        if (currentDeparture != null && ((Timestamp)newValue).getTime() - currentDeparture.getTime() < 3600000) {
+                            throw new IllegalArgumentException("Arrival time must be at least 1 hour after departure");
+                        }
                         break;
                     case "Plane":
                         columnName = "plane_id";
@@ -1408,29 +1435,38 @@ public class AdminDashboard {
         return outerPanel;
     }
 
+    // Helper methods for time validation
+    private Timestamp getCurrentDepartureTime(int flightId) {
+        try {
+            String sql = "SELECT reporting_time FROM flight WHERE id = ?";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setInt(1, flightId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getTimestamp("reporting_time");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private Timestamp getCurrentArrivalTime(int flightId) {
+        try {
+            String sql = "SELECT arrival_time FROM flight WHERE id = ?";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setInt(1, flightId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getTimestamp("arrival_time");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 // ================= HELPER METHODS ================= //
-private boolean isFutureDateTime(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo,
-                                 JComboBox<Integer> dayCombo, JComboBox<Integer> hourCombo,
-                                 JComboBox<Integer> minuteCombo, JComboBox<Integer> secondCombo) {
-    if (!isDateValid(yearCombo, monthCombo, dayCombo)) {
-        return false;
-    }
-    if (!isTimeValid(hourCombo, minuteCombo, secondCombo)) {
-        return false;
-    }
-
-    LocalDateTime selectedDateTime = LocalDateTime.of(
-            (Integer) yearCombo.getSelectedItem(),
-            (Integer) monthCombo.getSelectedItem(),
-            (Integer) dayCombo.getSelectedItem(),
-            (Integer) hourCombo.getSelectedItem(),
-            (Integer) minuteCombo.getSelectedItem(),
-            (Integer) secondCombo.getSelectedItem()
-    );
-
-    return selectedDateTime.isAfter(LocalDateTime.now());
-}
-
     private <T> JComboBox<T> createStyledComboBox() {
         JComboBox<T> comboBox = new JComboBox<>();
         comboBox.setBackground(Color.WHITE);
@@ -1502,27 +1538,6 @@ private boolean isFutureDateTime(JComboBox<Integer> yearCombo, JComboBox<Integer
                                       JComboBox<Integer> dayCombo, JComboBox<Integer> hourCombo,
                                       JComboBox<Integer> minuteCombo) {
         // This method can be enhanced to validate time ranges if needed
-    }
-    // Helper method to validate date and time combination
-    private boolean isDateTimeValid(JComboBox<Integer> yearCombo, JComboBox<Integer> monthCombo,
-                                    JComboBox<Integer> dayCombo, JComboBox<Integer> hourCombo,
-                                    JComboBox<Integer> minuteCombo, JComboBox<Integer> secondCombo) {
-        return isDateValid(yearCombo, monthCombo, dayCombo) &&
-                isTimeValid(hourCombo, minuteCombo, secondCombo);
-    }
-    // Helper method to validate that arrival datetime is after reporting datetime
-    private void validateDateTimeOrder(JComboBox<Integer> repYear, JComboBox<Integer> repMonth, JComboBox<Integer> repDay,
-                                       JComboBox<Integer> repHour, JComboBox<Integer> repMinute, JComboBox<Integer> repSecond,
-                                       JComboBox<Integer> arrYear, JComboBox<Integer> arrMonth, JComboBox<Integer> arrDay,
-                                       JComboBox<Integer> arrHour, JComboBox<Integer> arrMinute, JComboBox<Integer> arrSecond,
-                                       boolean[] isValidReporting, boolean[] isValidArrival) {
-        if (isValidReporting[0] && isValidArrival[0]) {
-            Timestamp repTs = getDateTimeFromPickers(repYear, repMonth, repDay, repHour, repMinute, repSecond);
-            Timestamp arrTs = getDateTimeFromPickers(arrYear, arrMonth, arrDay, arrHour, arrMinute, arrSecond);
-            if (arrTs != null && repTs != null && !arrTs.after(repTs)) {
-                isValidArrival[0] = false; // Invalid arrival time
-            }
-        }
     }
     // Updated method signature for button state
     private void updateAddFlightButtonState(boolean validPlane, boolean validSourceDest,
