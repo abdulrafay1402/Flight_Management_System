@@ -54,9 +54,15 @@ Contributions are welcome! Follow these steps to contribute:
    ```
 4. Push to your fork and submit a Pull Request.
 
-## License
-This project is open-source and available under the [MIT License](LICENSE).
+## 📃 License
 
+This project is for academic and institutional use. Please credit the developers if reused or modified for deployment.
+
+## 🙋‍♂️ Author
+
+**Abdul Rafay**  
+📧 Email: abdulrafay1402@gmail.com  
+🐙 GitHub: [@abdulrafay1402](https://github.com/abdulrafay1402)
 ## Contact
 For any inquiries or collaboration, reach out to:
 - **Abdul Rafay** - [GitHub](https://github.com/abdulrafay1402)
